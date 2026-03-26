@@ -1,9 +1,6 @@
 .Rproj.user
 .Rhistory
 
-# données
-*.rda
-
 # temporaires
 tmp/
 temp/
