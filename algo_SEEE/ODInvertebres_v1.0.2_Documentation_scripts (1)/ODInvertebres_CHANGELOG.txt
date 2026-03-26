@@ -1,0 +1,10 @@
+CHANGELOG ODInvertebres
+
+Version 1.0.2
+  Nouvelle procédure de validation
+  Sortie de graphiques radar
+  Filtre les données d'entrée pour ne conserver que les abondances strictement positives (enlève toutes les abondances de 0)
+
+Version 1.0.1
+	Première version
+	

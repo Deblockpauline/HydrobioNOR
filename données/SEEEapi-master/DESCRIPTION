@@ -1,0 +1,27 @@
+Type: Package
+Package: SEEEapi
+Title: This package allow to calculate water monitoring indicators from
+    the SEEE
+Version: 0.1.0
+Author: Cedric Mondy
+Maintainer: Cedric Mondy <cedric.mondy@ofb.gouv.fr>
+Description: This package allos to list and download indicator algorithms
+    provided by the French System for the evaluation of the water bodies
+    status (SEEE).  A function to calculate these indicators directly from
+    R is also provided, allowing to run calculation either remotely or
+    locally
+License: MIT
+Imports: 
+    archive,
+    dplyr,
+    httr,
+    purrr,
+    readr,
+    rvest,
+    stringr,
+    tidyr,
+    vroom,
+    xml2
+Encoding: UTF-8
+LazyData: true
+RoxygenNote: 7.3.2
