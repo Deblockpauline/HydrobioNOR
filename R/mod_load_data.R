@@ -44,7 +44,7 @@ mod_load_data_server <- function(id) {
     # Suppression du fichier temporaire après chargement
     unlink(fichier_temp)
 
-    # Affichage de la date de mise à jour si l'objet date_donnees existe
+    # Affichage de la date de mise à jour
     output$date <- renderText({
       if (exists("date_donnees", envir = .GlobalEnv)) {
         paste(
