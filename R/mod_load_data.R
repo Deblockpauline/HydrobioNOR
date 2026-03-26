@@ -1,55 +1,60 @@
-# load_data UI Function
-# @description Module Shiny permettant de charger les données hydrobiologiques
-# depuis un fichier distant et d'afficher la date de mise à jour.
-#
-# @param id Internal parameter for {shiny}.
-#
-# @return Un tagList contenant la date de mise à jour des données.
-# @noRd
-mod_load_data_ui <- function(id){
+#' Module de chargement des données
+
+#' @description
+#' Module Shiny qui télécharge le fichier `data_hydrobioNOR.rda`
+#' depuis le dépôt GitHub, charge les objets contenus dans ce fichier,
+#' puis affiche la date de mise à jour des données.
+#'
+#' @param id Identifiant du module Shiny.
+#'
+#' @return La date de mise à jour des données sous forme de texte
+#' @noRd
+#'
+#' @importFrom shiny NS tagList textOutput moduleServer renderText
+
+mod_load_data_ui <- function(id) {
   ns <- NS(id)
   tagList(
-    strong("Date de mise à jour des données :"),
-    textOutput(ns("date"))
-  )
-}
+    textOutput(ns("date")))}
 
-#' load_data Server Function
+#' Module serveur de chargement des données
 #'
-#' @description Télécharge le fichier data_hydrobio.rda depuis GitHub,
-#' charge les objets qu'il contient dans un environnement temporaire,
-#' puis renvoie les données utiles à l'application sous forme réactive.
+#' @param id Identifiant du module Shiny.
 #'
-#' @param id Internal parameter for {shiny}.
-#'
-#' @return Une liste réactive contenant au minimum :
-#' \itemize{
-#'   \item stations
-#'   \item date_donnees
-#' }
 #' @noRd
-mod_load_data_server <- function(id){
-  moduleServer(id, function(input, output, session){
 
-    # chemin vers le fichier
-    fichier <- "C:/Users/pauline.deblock/Documents/stage Pauline/R/hydrobioNOR/dev/data_hydrobioNOR.rda"
+mod_load_data_server <- function(id) {
+  moduleServer(id, function(input, output, session) {
 
-    # charger les données
-    e <- new.env()
-    load(fichier, envir = e)
+    # Création d'un fichier temporaire pour stocker le .rda téléchargé
+    fichier_temp <- tempfile(fileext = ".rda")
 
-    # afficher la date
+    # URL du fichier de données hébergé sur GitHub
+    url_data <- "https://raw.githubusercontent.com/Deblockpauline/HydrobioNOR/main/dev/data_hydrobioNOR.rda"
+
+    # Téléchargement du fichier .rda depuis GitHub
+    download.file(
+      url = url_data,
+      destfile = fichier_temp,
+      mode = "wb")
+
+    # Chargement des objets contenus dans le .rda dans l'environnement global
+    load(fichier_temp, envir = .GlobalEnv)
+
+    # Suppression du fichier temporaire après chargement
+    unlink(fichier_temp)
+
+    # Affichage de la date de mise à jour si l'objet date_donnees existe
     output$date <- renderText({
-      paste("Mise à jour le", format(e$date_donnees, "%d/%m/%Y"))
+      if (exists("date_donnees", envir = .GlobalEnv)) {
+        paste(
+          "Date de mise à jour des données :",
+          as.character(get("date_donnees", envir = .GlobalEnv)))
+        } else {
+        "Date de mise à jour non disponible" }
     })
-
-    # retourner les données
-    reactive({
-      list(
-        stations = e$stations,
-        date_donnees = e$date_donnees
-      )
-    })
-
   })
 }
+
+# À appeler dans l'UI --> mod_load_data_ui("load_data_1")
+# À appeler dans le server --> mod_load_data_server("load_data_1")
