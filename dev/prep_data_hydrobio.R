@@ -421,6 +421,7 @@ donnee_carte <- stations %>%
     code_masse_eau,
     libelle_masse_eau,
     code_dep,
+    UH_calculee,
     date_premier_prelevement,
     date_dernier_prelevement,
     geometry,
