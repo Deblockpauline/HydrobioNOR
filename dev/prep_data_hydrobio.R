@@ -1,13 +1,12 @@
 #### Packages ####
-library(hubeau) # Package pour la recup des données
+library(hubeau)# Package pour la recup des données
+library(shiny)
 library(dplyr) # Package pour le traitement
 library(purrr) # Permet de remplacer des boucles for
 library(lubridate) # Permet de filter les années par la suite
 library(stringr) # Travailler proprement avec les chaînes de caractères
 library(tidyr) # Pour la mise en forme des données
 library(sf) # Manipuler des données géographiques (cartes)
-library(remotes) # Permet d'installer SEEE de monsieur Mondy
-remotes::install_local( "C:/Users/pauline.deblock/Documents/stage Pauline/R/donnés/SEEEapi-master") # Permet d'installer le package SEEE.api de cedric mondy telecharger sur github
 library(SEEEapi) #Permet de calculer les indices et le diag
 # |> = prends ca et passe-le à la fonction
 # %>% = meme chose mais + souple et issue de dplyr et . =place l'object
@@ -55,7 +54,7 @@ indices <- map_dfr(codes, function(cd) {
 # Calculer les dates de premier et dernier prélèvement par station
 dates_station <- taxons%>%
   dplyr::mutate(date_prelevement = as.Date(date_prelevement)) %>%
-  dplyr::group_by(code_station= code_station_hydrobio) %>%
+  dplyr::group_by(code_station= code_station) %>%
   dplyr::summarise(
     date_premier_prelevement = min(date_prelevement, na.rm = TRUE),
     date_dernier_prelevement = max(date_prelevement, na.rm = TRUE))
@@ -114,6 +113,44 @@ strahler <- extraction_strahler %>%
 # Joindre les 2
 stations <- stations %>%
   dplyr::left_join(strahler, by = "code_masse_eau")
+
+# Pour les uh
+# Lecture du shapefile des UH
+uh <- sf::st_read(
+  "C:/Users/pauline.deblock/Documents/stage Pauline/R/hydrobioNOR/données/UH/UH_actives_simplifiees.shp",
+  quiet = TRUE)
+
+stations <- stations %>%
+  sf::st_as_sf(
+    coords = c("coordonnee_x", "coordonnee_y"),
+    crs = 2154,
+    remove = FALSE )
+
+# Vérification des systèmes de coordonnées (CRS)
+sf::st_crs(uh)
+sf::st_crs(stations)
+
+# Transformation de la couche UH dans le CRS des stations
+uh <- sf::st_transform(uh, sf::st_crs(stations))
+
+# Jointure spatiale
+stations <- sf::st_join(stations, uh, join = sf::st_within)
+
+# Vérification des colonnes après jointure
+names(stations)
+
+# On standardise le nom pour l'application Shiny
+stations <- stations %>%
+  dplyr::mutate(
+    UH_calculee = NOM)
+
+# Vérification du nombre de stations sans UH attribuée
+table(is.na(stations$UH_calculee))
+
+# Comptage du nombre de stations par unité hydrographique
+stations %>%
+  sf::st_drop_geometry() %>%
+  dplyr::count(UH_calculee, sort = TRUE)
 
 #### Mettre en forme Taxons#####
 taxons <- taxons %>%
@@ -442,7 +479,7 @@ donnee_carte_taxon <- taxons %>%
     hover)
 
 #### Table pour le diag####
-#Construction table entree_mic_seee
+#Construction table entree_miv_seee
 taxons_inv <- taxons %>%
   filter(code_support == "13")  # Prendre que les MIV
 
@@ -465,20 +502,110 @@ tc_diat <- readxl::read_excel("données/TCv1.3_DIAT.xlsx")
 taxons_diat <- taxons %>%
   filter(code_support == "10")  # Prendre que les DIA
 
-# A modif car manque les codes
-entree_diat <- taxons_diat %>%
-  mutate(code_taxon = as.character(code_appel_taxon)) %>%
+# Lecture des 2 fichiers exportés du Sandre
+export_diat_a <- read_csv2(
+  "C:/Users/pauline.deblock/Documents/stage Pauline/R/hydrobioNOR/données/export_1775210580.csv")
+export_diat_b <- read_csv2(
+  "C:/Users/pauline.deblock/Documents/stage Pauline/R/hydrobioNOR/données/export_diat1.csv")
+
+# Attention une table contient tout les compartiements
+# Filtrer chaque table sur CdThemeTaxon = 5 puis les fusionner
+export_diat <- bind_rows(
+  export_diat_a %>% filter(as.character(CdThemeTaxon) == "5"),
+  export_diat_b %>% filter(as.character(CdThemeTaxon) == "5")) %>%
+  distinct()
+
+#Vérifier que les colonnes CdAlternatif1 à CdAlternatif5 existent
+colonnes_alt <- paste0("CdAlternatif", 1:5)
+for (col in colonnes_alt) {
+  if (!col %in% names(export_diat)) {
+    export_diat[[col]] <- NA_character_ } }
+
+# Nettoyer les colonnes utiles de export_diat
+export_diat <- export_diat %>%
+  mutate(
+    CdAppelTaxon  = trimws(as.character(CdAppelTaxon)),
+    CdAlternatif1 = toupper(trimws(as.character(CdAlternatif1))),
+    CdAlternatif2 = toupper(trimws(as.character(CdAlternatif2))),
+    CdAlternatif3 = toupper(trimws(as.character(CdAlternatif3))),
+    CdAlternatif4 = toupper(trimws(as.character(CdAlternatif4))),
+    CdAlternatif5 = toupper(trimws(as.character(CdAlternatif5))) )
+
+
+# Fonction pour vérifier si un code =  4 lettres
+est_code_valide <- function(x) {
+  x <- trimws(as.character(x))
+  if (length(x) == 0 || is.na(x) || x == "") {
+    return(FALSE)}
+  str_detect(x, "^[A-Z]{4}$") }
+
+# Construire la table de correspondance
+# Pour chaque CdAppelTaxon, on garde la liste des codes valides dans l'ordre
+correspondance_taxon <- export_diat %>%
+  rowwise() %>%
+  mutate(
+    codes_valides = list(c(
+      if (est_code_valide(CdAlternatif1)) CdAlternatif1 else NULL,
+      if (est_code_valide(CdAlternatif2)) CdAlternatif2 else NULL,
+      if (est_code_valide(CdAlternatif3)) CdAlternatif3 else NULL,
+      if (est_code_valide(CdAlternatif4)) CdAlternatif4 else NULL,
+      if (est_code_valide(CdAlternatif5)) CdAlternatif5 else NULL )) ) %>%
+  ungroup() %>%
+  distinct(CdAppelTaxon, .keep_all = TRUE) %>%
+  select(CdAppelTaxon, codes_valides)
+
+
+# Préparer la table taxons_diat
+# On crée :
+# - n = nombre d'occurrences d'un taxon dans une opération
+# - rang_doublon = rang de la ligne dans ce groupe
+taxons_diat_prep <- taxons_diat %>%
+  mutate(
+    code_appel_taxon = trimws(as.character(code_appel_taxon)),
+    code_prelevement = as.character(code_prelevement),
+    code_station     = as.character(code_station) ) %>%
+  group_by(code_prelevement, code_appel_taxon) %>%
+  mutate(
+    n = n(),
+    rang_doublon = row_number() ) %>%
+  ungroup()
+
+# Créer directement entree_diat
+# Si un taxon apparaît plusieurs fois dans une même opération,
+# on attribue les codes valides selon le rang :
+# 1re ligne = 1er code valide
+# 2e ligne = 2e code valide
+entree_diat <- taxons_diat_prep %>%
   left_join(
-    tc_diat %>%
-      mutate(SANDRE = as.character(SANDRE)) %>%
-      select(SANDRE, OMNIDIA),
-    by = c("code_appel_taxon" = "SANDRE")) %>%
+    correspondance_taxon,
+    by = c("code_appel_taxon" = "CdAppelTaxon") ) %>%
+  rowwise() %>%
+  mutate(
+    CODE_TAXON = if (
+      !is.null(codes_valides) &&
+      length(codes_valides) >= rang_doublon ) {
+      as.character(codes_valides[[rang_doublon]])
+    } else { NA_character_ } ) %>%
+  ungroup() %>%
   transmute(
-    CODE_OPERATION = code_prelevement,
-    CODE_STATION   = code_station,
-    DATE           = format(as.Date(date_prelevement), "%d/%m/%Y"),
-    CODE_TAXON     = OMNIDIA,
-    RESULTAT       = as.integer(resultat_taxon))
+    CODE_OPERATION   = code_prelevement,
+    CODE_STATION     = code_station,
+    DATE             = format(as.Date(date_prelevement), "%d/%m/%Y"),
+    code_appel_taxon = code_appel_taxon,
+    CODE_TAXON       = CODE_TAXON,
+    RESULTAT         = as.integer(resultat_taxon),
+    n                = n)
+
+# Garder seulement les NA restants, sans doublons de code_appel_taxon -
+tableau_NA_sans_doublons <- entree_diat %>%
+  filter(is.na(CODE_TAXON)) %>%
+  distinct(code_appel_taxon, .keep_all = TRUE)
+
+# Enregistrer le tableau des NA en Excel
+write.xlsx(
+  tableau_NA_sans_doublons,
+  "C:/Users/pauline.deblock/Documents/stage Pauline/R/hydrobioNOR/données/NA_uniques.xlsx",
+  overwrite = TRUE) # Il reste 48 NA
 
 #### Table valeur_seuil_taxon ####
 # Récupération de la liste des fichiers de paramètres des indices dans le dossier des algorithmes SEEE version 2018.
