@@ -441,24 +441,30 @@ donnee_carte_taxon <- taxons %>%
     annee = year(date_prelevement) ) %>%
   group_by(
     code_station,
-    libelle_station,  # Regroupement
+    libelle_station, # Regroupement
     code_support,
-    libelle_taxon) %>%
+    libelle_taxon ) %>%
   summarise(
     abondance_moyenne = mean(resultat_taxon, na.rm = TRUE),
     annee_min = min(annee, na.rm = TRUE),
-    annee_max = max(annee, na.rm = TRUE), # Calcul de l'abondance, année max et min
+    annee_max = max(annee, na.rm = TRUE), # Calcul de l'abondance, année min et max
     .groups = "drop" ) %>%
   mutate(
+    eqb = dplyr::case_when(
+      code_support == "10" ~ "Diatomées",
+      code_support == "13" ~ "Macroinvertébrés",
+      code_support == "27" ~ "Macrophytes",
+      code_support == "4"  ~ "Poissons",
+      TRUE ~ NA_character_ ), # Associer chaque code_support à son EQB pour le filtre dans l'application
     abondance_affichee = sub("\\.?0+$", "", sprintf("%.3f", abondance_moyenne)),
     resume = paste0(
       "abondance: ",
       abondance_affichee,
-      " (", # Permet de bien afficher le resume comme dans IDF
+      " (",
       annee_min,
       "-",
       annee_max,
-      ")" ),
+      ")"  ), # Permet de bien afficher le resume comme dans IDF
     hover = paste0(
       "<b>", libelle_taxon, "</b><br>",
       "<em>", libelle_station, "</em><br><br>", # Permet de bien afficher comme dans IDF
@@ -467,17 +473,18 @@ donnee_carte_taxon <- taxons %>%
     stations %>%
       select(code_station, code_dep, coordonnee_x, coordonnee_y), # Recuperer les données utiles
     by = "code_station" ) %>%
-  st_as_sf(coords = c("coordonnee_x", "coordonnee_y"), crs = 2154, remove = FALSE) %>% #transfromation en object spatial
+  st_as_sf(coords = c("coordonnee_x", "coordonnee_y"), crs = 2154, remove = FALSE) %>% # Transformation en objet spatial
   select(
     code_dep,
     code_station,
     geometry,
     libelle_station,
     code_support,
+    eqb,
     libelle_taxon,
-    abondance_moyenne, # Selection final
+    abondance_moyenne, # Selection finale
     resume,
-    hover)
+    hover )
 
 #### Table pour le diag####
 #Construction table entree_miv_seee
