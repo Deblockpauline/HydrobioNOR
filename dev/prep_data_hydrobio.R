@@ -645,13 +645,12 @@ for (x in noms_indices_param) {
     valeurs_seuils[[x]] <- valeurs_seuils[[x]] |>
       dplyr::mutate(
         BON = ifelse(is.na(BON), BASSE_ALTITUDE, BON) #manque la classe BON
-      ) |>
+        ) |>
       dplyr::select(TYPO_NATIONALE, TRES_BON, BON, MOYEN, MEDIOCRE, MAUVAIS) |>
       tidyr::pivot_longer( #format large à long
         cols = -TYPO_NATIONALE,
         names_to = "classe",
-        values_to = "seuil_haut"
-      ) |>
+        values_to = "seuil_haut" ) |>
       dplyr::mutate(
         seuil_bas = ifelse(classe == "TRES_BON", 0, dplyr::lag(seuil_haut)))
 
@@ -661,8 +660,7 @@ for (x in noms_indices_param) {
       tidyr::pivot_longer(
         cols = -c(TYPO_NATIONALE, TG_BV),
         names_to = "classe",
-        values_to = "seuil_bas"
-      ) |>
+        values_to = "seuil_bas" ) |>
       dplyr::mutate(
         seuil_haut = ifelse(classe == "TRES_BON", 1, dplyr::lag(seuil_bas))) #tres bon = 1(borne superieur)
 
@@ -672,8 +670,7 @@ for (x in noms_indices_param) {
       tidyr::pivot_longer(
         cols = -TYPO_NATIONALE,
         names_to = "classe",
-        values_to = "seuil_bas"
-      ) |>
+        values_to = "seuil_bas" ) |>
       dplyr::mutate(
         seuil_haut = ifelse(classe == "TRES_BON", 1, dplyr::lag(seuil_bas)))}}
 
@@ -716,7 +713,7 @@ valeur_seuil_taxon <- stations_seee |>
         dplyr::left_join(
           valeurs_seuils$I2M2,
           by = c("typologie" = "TYPO_NATIONALE")),
-    )
+      )
   })() |>
   dplyr::mutate(
     seuil_haut = ifelse(is.na(seuil_bas), NA, seuil_haut)) |>
@@ -727,36 +724,31 @@ valeur_seuil_taxon <- stations_seee |>
     indice,
     classe,
     seuil_haut,
-    seuil_bas
-  ) |> dplyr::arrange(code_station, indice, classe)
+    seuil_bas ) |> dplyr::arrange(code_station, indice, classe)
 
 #### Table resume pour les taxons ####
 resume_liste <- taxons %>%
   mutate( # Prend les données dans taxons, nettoie la date, les noms etc
     date_prelevement = as.Date(date_prelevement),
     annee = lubridate::year(date_prelevement),
-    libelle_taxon = stringr::str_squish(libelle_taxon)
-  ) %>%
+    libelle_taxon = stringr::str_squish(libelle_taxon) ) %>%
   filter(!is.na(libelle_taxon), libelle_taxon != "") %>% # Filtre les taxons presents (evite les NA)
   distinct(code_station, code_support, libelle_support, annee, libelle_taxon) %>% # Supprime les doublons
   group_by(code_station, code_support, libelle_support, annee) %>%
   summarise( # Nb de taxon par année/support/station
     nb_taxons = n(),
-    .groups = "drop"
-  ) %>%
+    .groups = "drop" ) %>%
   group_by(code_station, code_support, libelle_support) %>% # Par station/support
   summarise( # Création finale
     periode = dplyr::if_else(
       min(annee, na.rm = TRUE) == max(annee, na.rm = TRUE),# Au niveau des années
       as.character(max(annee, na.rm = TRUE)),
-      paste0(min(annee, na.rm = TRUE), "-", max(annee, na.rm = TRUE))
-    ),
+      paste0(min(annee, na.rm = TRUE), "-", max(annee, na.rm = TRUE) ) ),
     annee = max(annee, na.rm = TRUE), # Année la plus recente
     taxon = dplyr::if_else( # Intervalle taxon
       min(nb_taxons, na.rm = TRUE) == max(nb_taxons, na.rm = TRUE),
       as.character(min(nb_taxons, na.rm = TRUE)),
-      paste0(min(nb_taxons, na.rm = TRUE), "-", max(nb_taxons, na.rm = TRUE))
-    ),
+      paste0(min(nb_taxons, na.rm = TRUE), "-", max(nb_taxons, na.rm = TRUE) ) ),
     .groups = "drop")
 
 #### Définition des acronymes des indices#####
