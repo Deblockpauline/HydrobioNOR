@@ -286,10 +286,11 @@ indices_poisson <- indices_seee %>%
   filter(CODE_PAR %in% c("7036", "NA")) %>%
   arrange(CODE_STATION, CODE_OPERATION, CODE_PAR)
 
+as.tbl <- tibble::as_tibble
 # On calcule le SEEE 2018 comme IDF
 etat_2018 <- SEEEapi::calc_indic(
   indic = "EBio_CE_2018",
-  version = "1.0.1",
+  version = "1.0.2",
   locally = TRUE,
   dir_algo = "algo_seee", # Ficher telechargé de Cedric mondy qui contient l'agorythme necessaire
   data = list(
