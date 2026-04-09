@@ -152,6 +152,10 @@ stations %>%
   sf::st_drop_geometry() %>%
   dplyr::count(UH_calculee, sort = TRUE)
 
+#On garde seulement les stations avec des indices
+stations <-stations %>%
+  dplyr::semi_join(indices, by = "code_station")
+
 #### Mettre en forme Taxons#####
 taxons <- taxons %>%
   dplyr::select(
