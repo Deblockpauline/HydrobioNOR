@@ -178,7 +178,9 @@ taxons <- taxons %>%
   dplyr::mutate(abondance_relative = resultat_taxon / sum(resultat_taxon, na.rm = TRUE)) %>%
   dplyr::ungroup()  # Permet de ajouter et de calculer l'adondance pour le graph
 
-
+#Garder seulement ceux qui nous interresse
+taxons <- taxons %>%
+  dplyr::filter(code_station %in% stations$code_station)
 #### Mettre en forme indice#####
 indices <- indices %>%
   dplyr::select(
