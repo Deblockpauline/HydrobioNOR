@@ -375,13 +375,50 @@ metriques <- indices %>%
   filter(code_indice %in% c(8058, 8056, 8057, 8054, 8050)) # On filtre pour avoir que les metriques de l'I2M2
 
 #### Table occupation du sol issue de QGIS####
-occupation <- read.csv("occupation_station.csv", stringsAsFactors = FALSE)
+# Pour 2018
+occupation_2018 <- read.csv("occupation_2018.csv", stringsAsFactors = FALSE)
 # Ayant deja réaliser sur QGIS ma table avec un buffer, une interserction avec CLC et des calculs dans la table attributaire et l'extraction de cette table
 # j'ai juste a importer la table ici
-occupation_station <- occupation %>%
+occupation_2018 <- occupation_2018 %>%
   mutate(pourcentage = as.numeric(pourcentage)) %>%
   pivot_wider(
-    names_from = cat5,
+    names_from = classe_regroupee,
+    values_from = pourcentage,
+    values_fill = 0)
+
+# Pour 2012
+occupation_2012 <- read.csv("occupation_2012.csv", stringsAsFactors = FALSE)
+occupation_2012 <- occupation_2012 %>%
+  mutate(pourcentage = as.numeric(pourcentage)) %>%
+  pivot_wider(
+    names_from = classe_regoupee,
+    values_from = pourcentage,
+    values_fill = 0)
+
+# Pour 2006
+occupation_2006 <- read.csv("occupation_2006.csv", stringsAsFactors = FALSE)
+occupation_2006 <- occupation_2006 %>%
+  mutate(pourcentage = as.numeric(pourcentage)) %>%
+  pivot_wider(
+    names_from = classe_regroupee,
+    values_from = pourcentage,
+    values_fill = 0)
+
+# Pour 2000
+occupation_2000 <- read.csv("occupation_2000.csv", stringsAsFactors = FALSE)
+occupation_2000 <- occupation_2000 %>%
+  mutate(pourcentage = as.numeric(pourcentage)) %>%
+  pivot_wider(
+    names_from = classe.regroupee,
+    values_from = pourcentage,
+    values_fill = 0)
+
+# Pour 1990
+occupation_1990 <- read.csv("occupation_90.csv", stringsAsFactors = FALSE)
+occupation_1990 <- occupation_1990 %>%
+  mutate(pourcentage = as.numeric(pourcentage)) %>%
+  pivot_wider(
+    names_from = classe_regroupee,
     values_from = pourcentage,
     values_fill = 0)
 
@@ -620,7 +657,7 @@ tableau_NA_sans_doublons <- entree_diat %>%
 write.xlsx(
   tableau_NA_sans_doublons,
   "C:/Users/pauline.deblock/Documents/stage Pauline/R/hydrobioNOR/données/NA_uniques.xlsx",
-  overwrite = TRUE) # Il reste 48 NA
+  overwrite = TRUE)  # Il reste 48 NA
 
 #### Table valeur_seuil_taxon ####
 # Récupération de la liste des fichiers de paramètres des indices dans le dossier des algorithmes SEEE version 2018.
@@ -776,6 +813,23 @@ acronymes_indices <- c(
 
 #### Enregister en rda maintenant####
 date_donnees <- Sys.Date() # Date de mise à jour des données
-save( stations, taxons, indices, etat_bio, date_donnees, indices_etat_bio,acronymes_indices, valeur_seuil_taxon, resume_liste, entree_inv, entree_diat, metriques, occupation_station,donnee_carte,donnee_carte_taxon,
+save( stations,
+      taxons,
+      indices,
+      etat_bio,
+      date_donnees,
+      indices_etat_bio,
+      acronymes_indices,
+      valeur_seuil_taxon,
+      resume_liste,
+      entree_inv,
+      entree_diat,
+      metriques,
+      occupation_2018,
+      occupation_2012,
+      occupation_2006,
+      occupation_2000,
+      occupation_1990,
+      donnee_carte,
+      donnee_carte_taxon,
   file = "C:/Users/pauline.deblock/Documents/stage Pauline/R/hydrobioNOR/dev/data_hydrobioNOR.rda")
-
