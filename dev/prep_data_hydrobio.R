@@ -51,13 +51,21 @@ indices <- map_dfr(codes, function(cd) {
 # Meme fonctionnement que Taxon
 
 #### Table Stations avec toutes les info####
-# Calculer les dates de premier et dernier prélèvement par station
-dates_station <- taxons%>%
-  dplyr::mutate(date_prelevement = as.Date(date_prelevement)) %>%
-  dplyr::group_by(code_station= code_station) %>%
-  dplyr::summarise(
-    date_premier_prelevement = min(date_prelevement, na.rm = TRUE),
-    date_dernier_prelevement = max(date_prelevement, na.rm = TRUE))
+dates_station <- bind_rows(
+  taxons %>%
+    transmute(
+      code_station = as.character(code_station),
+      date_prelevement = as.Date(date_prelevement) ),
+  indices %>%
+    transmute(
+      code_station = as.character(code_station),
+      date_prelevement = as.Date(date_prelevement) ) ) %>%
+  filter(!is.na(code_station), !is.na(date_prelevement) ) %>%
+  group_by(code_station) %>%
+  summarise(
+    date_premier_prelevement = min(date_prelevement),
+    date_dernier_prelevement = max(date_prelevement),
+    .groups = "drop" )
 
 # Nettoyer stations avec seulement les informations utiles
 stations <- stations %>%
@@ -109,17 +117,25 @@ strahler <- extraction_strahler %>%
   dplyr::select(
     code_masse_eau = CdEuMasseD,
     StrahlMax)
-
 # Joindre les 2
 stations <- stations %>%
   dplyr::left_join(strahler, by = "code_masse_eau")
+
+# Aller chercher les typo
+extraction_typo <- readxl::read_excel("extraction_typo.xlsx")
+typo <- extraction_typo %>%
+  dplyr::select(
+    code_station = Code,
+    typologie = `Type Masse Deau CoursDEau`)
+stations <- stations %>%
+  select(-typologie) %>%
+  left_join(typo, by = "code_station")
 
 # Pour les uh
 # Lecture du shapefile des UH
 uh <- sf::st_read(
   "C:/Users/pauline.deblock/Documents/stage Pauline/R/hydrobioNOR/données/UH/UH_actives_simplifiees.shp",
   quiet = TRUE)
-
 stations <- stations %>%
   sf::st_as_sf(
     coords = c("coordonnee_x", "coordonnee_y"),
@@ -479,6 +495,7 @@ donnee_carte <- stations %>%
     dernier_resultat)
 
 # Table donnee_carte_taxon##
+# Table donnee_carte_taxon##
 donnee_carte_taxon <- taxons %>%
   mutate(
     date_prelevement = as.Date(date_prelevement), # Pour les dates
@@ -515,8 +532,10 @@ donnee_carte_taxon <- taxons %>%
       resume ) ) %>%
   left_join(
     stations %>%
+      st_drop_geometry() %>%
       select(code_station, code_dep, coordonnee_x, coordonnee_y), # Recuperer les données utiles
     by = "code_station" ) %>%
+  filter(!is.na(coordonnee_x), !is.na(coordonnee_y)) %>% # Retirer les lignes sans coordonnées
   st_as_sf(coords = c("coordonnee_x", "coordonnee_y"), crs = 2154, remove = FALSE) %>% # Transformation en objet spatial
   select(
     code_dep,
@@ -550,7 +569,7 @@ entree_inv <- taxons_inv %>%
     CODE_REMARQUE  = code_remarque)
 
 # Table entree_dia
-tc_diat <- readxl::read_excel("données/TCv1.3_DIAT.xlsx")
+tc_diat <- readxl::read_excel("TCv1.3_DIAT.xlsx")
 taxons_diat <- taxons %>%
   filter(code_support == "10")  # Prendre que les DIA
 
@@ -622,22 +641,34 @@ taxons_diat_prep <- taxons_diat %>%
     rang_doublon = row_number() ) %>%
   ungroup()
 
-# Créer directement entree_diat
+# Lecture du fichier contenant les corrections manuelles
+na_uniques <- readxl::read_excel("NA_uniques.xlsx") %>%
+  mutate(
+    CODE_OPERATION   = as.character(CODE_OPERATION),
+    CODE_STATION     = as.character(CODE_STATION),
+    DATE             = as.character(DATE),
+    code_appel_taxon = trimws(as.character(code_appel_taxon)),
+    RESULTAT         = as.integer(RESULTAT),
+    n                = as.integer(n),
+    Nouveau_code     = as.character(Nouveau_code) )
+
+# Créer entree_diat
 # Si un taxon apparaît plusieurs fois dans une même opération,
 # on attribue les codes valides selon le rang :
 # 1re ligne = 1er code valide
 # 2e ligne = 2e code valide
+# Puis si un Nouveau_code existe dans NA_uniques.xlsx, il remplace CODE_TAXON
 entree_diat <- taxons_diat_prep %>%
   left_join(
     correspondance_taxon,
-    by = c("code_appel_taxon" = "CdAppelTaxon") ) %>%
+    by = c("code_appel_taxon" = "CdAppelTaxon")) %>%
   rowwise() %>%
   mutate(
     CODE_TAXON = if (
       !is.null(codes_valides) &&
-      length(codes_valides) >= rang_doublon ) {
+      length(codes_valides) >= rang_doublon) {
       as.character(codes_valides[[rang_doublon]])
-    } else { NA_character_ } ) %>%
+    } else {  NA_character_ }) %>%
   ungroup() %>%
   transmute(
     CODE_OPERATION   = code_prelevement,
@@ -646,18 +677,21 @@ entree_diat <- taxons_diat_prep %>%
     code_appel_taxon = code_appel_taxon,
     CODE_TAXON       = CODE_TAXON,
     RESULTAT         = as.integer(resultat_taxon),
-    n                = n)
+    n                = n ) %>%
+  left_join(
+    na_uniques %>%
+      select(CODE_OPERATION, CODE_STATION, DATE, code_appel_taxon, RESULTAT, n, Nouveau_code),
+    by = c("CODE_OPERATION", "CODE_STATION", "DATE", "code_appel_taxon", "RESULTAT", "n") ) %>%
+  mutate( CODE_TAXON = dplyr::coalesce(Nouveau_code, CODE_TAXON) ) %>%
+  select(
+    CODE_OPERATION,
+    CODE_STATION,
+    DATE,
+    code_appel_taxon,
+    CODE_TAXON,
+    RESULTAT )
 
-# Garder seulement les NA restants, sans doublons de code_appel_taxon -
-tableau_NA_sans_doublons <- entree_diat %>%
-  filter(is.na(CODE_TAXON)) %>%
-  distinct(code_appel_taxon, .keep_all = TRUE)
 
-# Enregistrer le tableau des NA en Excel
-write.xlsx(
-  tableau_NA_sans_doublons,
-  "C:/Users/pauline.deblock/Documents/stage Pauline/R/hydrobioNOR/données/NA_uniques.xlsx",
-  overwrite = TRUE)  # Il reste 48 NA
 
 #### Table valeur_seuil_taxon ####
 # Récupération de la liste des fichiers de paramètres des indices dans le dossier des algorithmes SEEE version 2018.
