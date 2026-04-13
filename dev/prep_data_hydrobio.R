@@ -396,6 +396,7 @@ occupation_2018 <- read.csv("occupation_2018.csv", stringsAsFactors = FALSE)
 # Ayant deja réaliser sur QGIS ma table avec un buffer, une interserction avec CLC et des calculs dans la table attributaire et l'extraction de cette table
 # j'ai juste a importer la table ici
 occupation_2018 <- occupation_2018 %>%
+  mutate(code_station = stringr::str_pad(as.character(code_station), width = 8, side = "left", pad = "0")) %>%
   mutate(pourcentage = as.numeric(pourcentage)) %>%
   pivot_wider(
     names_from = classe_regroupee,
@@ -405,6 +406,7 @@ occupation_2018 <- occupation_2018 %>%
 # Pour 2012
 occupation_2012 <- read.csv("occupation_2012.csv", stringsAsFactors = FALSE)
 occupation_2012 <- occupation_2012 %>%
+  mutate(code_station = stringr::str_pad(as.character(code_station), width = 8, side = "left", pad = "0")) %>%
   mutate(pourcentage = as.numeric(pourcentage)) %>%
   pivot_wider(
     names_from = classe_regoupee,
@@ -414,6 +416,7 @@ occupation_2012 <- occupation_2012 %>%
 # Pour 2006
 occupation_2006 <- read.csv("occupation_2006.csv", stringsAsFactors = FALSE)
 occupation_2006 <- occupation_2006 %>%
+  mutate(code_station = stringr::str_pad(as.character(code_station), width = 8, side = "left", pad = "0")) %>%
   mutate(pourcentage = as.numeric(pourcentage)) %>%
   pivot_wider(
     names_from = classe_regroupee,
@@ -423,6 +426,7 @@ occupation_2006 <- occupation_2006 %>%
 # Pour 2000
 occupation_2000 <- read.csv("occupation_2000.csv", stringsAsFactors = FALSE)
 occupation_2000 <- occupation_2000 %>%
+  mutate(code_station = stringr::str_pad(as.character(code_station), width = 8, side = "left", pad = "0")) %>%
   mutate(pourcentage = as.numeric(pourcentage)) %>%
   pivot_wider(
     names_from = classe.regroupee,
@@ -432,6 +436,7 @@ occupation_2000 <- occupation_2000 %>%
 # Pour 1990
 occupation_1990 <- read.csv("occupation_90.csv", stringsAsFactors = FALSE)
 occupation_1990 <- occupation_1990 %>%
+  mutate(code_station = stringr::str_pad(as.character(code_station), width = 8, side = "left", pad = "0")) %>%
   mutate(pourcentage = as.numeric(pourcentage)) %>%
   pivot_wider(
     names_from = classe_regroupee,
