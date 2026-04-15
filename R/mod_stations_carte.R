@@ -213,7 +213,7 @@ mod_station_carte_server <- function(id,
     shiny::observeEvent(input$recherche_station, { # S'active seulement au clic dans la liste
       shiny::req(input$recherche_station) # Vérifie qu'une valeur a bien été choisie
       station_selectionnee(input$recherche_station)}, # Met à jour la station sélectionnée
-    ignoreNULL = TRUE)
+      ignoreNULL = TRUE)
 
     # Sélection d'une station via un clic sur un point de la carte
     shiny::observeEvent(input$carte_stations_marker_click, { # Déclenché au clic sur une station
@@ -264,3 +264,4 @@ mod_station_carte_server <- function(id,
 
 ## À appeler dans le server
 # mod_station_carte_server("station_carte")
+

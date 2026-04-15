@@ -9,7 +9,7 @@ mod_selecteur_dep_ui <- function(id) {
     shiny::selectInput(
       inputId = ns("departement"),
       label = "Département",
-      choices = "Tous", # Initialisé avce tous
+      choices = "Tous", # Initialisé avec tous
       selected = "Tous" ) ) } # Tous par defaut
 
 #' Module server du sélecteur de département
@@ -26,12 +26,12 @@ mod_selecteur_dep_server <- function(id, donnees) {
       shiny::req(donnees()) # Verifie que données existe
       shiny::req("donnee_carte" %in% names(donnees())) # Verifie que donnee_carte est present
       df <- donnees()$donnee_carte
-      shiny::req(!is.null(df))  # Sécurité
+      shiny::req(!is.null(df))  # Sécurité : pas que ca soit nul et qu'on est un code_dep
       shiny::req("code_dep" %in% names(df))
 
       # Récupération des départements uniques présents dans les données
       liste_departements <- df |>
-        dplyr::pull(code_dep) |> # Prend le colonne
+        dplyr::pull(code_dep) |> # Prend la colonne
         unique() |> # Enleve les doublons
         sort() # Trie
 
@@ -42,5 +42,5 @@ mod_selecteur_dep_server <- function(id, donnees) {
         choices = c("Tous", liste_departements),
         selected = "Tous")
     } )
-    return(shiny::reactive(input$departement)) # Renvoie le dep séléctionné
+    return(shiny::reactive(input$departement)) # Renvoie le dep séléctionné en réactive
   } ) }
