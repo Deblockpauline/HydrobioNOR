@@ -461,7 +461,6 @@ occupation_1990 <- occupation_1990 %>%
     values_fill = 0)
 
 #### Table occupation du sol du BV #####
-
 # Pour 2018
 occupation_BV_2018 <- read.csv("occupation_BV_2018.csv", stringsAsFactors = FALSE)
 occupation_BV_2018 <- occupation_BV_2018 %>%
@@ -503,7 +502,7 @@ occupation_BV_2000 <- occupation_BV_2000 %>%
     values_fill = 0)
 
 # Pour 1990
-occupation_BV_1990 <- read.csv("occupation_BV_90.csv", stringsAsFactors = FALSE)
+occupation_BV_1990 <- read.csv("occupation_BV_1990.csv", stringsAsFactors = FALSE)
 occupation_BV_1990 <- occupation_BV_1990 %>%
   mutate(CdOH = stringr::str_pad(as.character(CdOH), width = 8, side = "left", pad = "0")) %>%
   mutate(pourcentage = as.numeric(pourcentage)) %>%
@@ -512,6 +511,56 @@ occupation_BV_1990 <- occupation_BV_1990 %>%
     values_from = pourcentage,
     values_fill = 0)
 
+#### Table occupation BV en details#####
+# Pour 2018
+occupation_BV_details_2018 <- read.csv("occupation_BV_details_2018.csv", stringsAsFactors = FALSE)
+occupation_BV_details_2018 <- occupation_BV_details_2018 %>%
+  mutate(CdOH = stringr::str_pad(as.character(CdOH), width = 8, side = "left", pad = "0")) %>%
+  mutate(pourcentage = as.numeric(pourcentage)) %>%
+  pivot_wider(
+    names_from = classe_regroupee,
+    values_from = pourcentage,
+    values_fill = 0)
+
+# Pour 2012
+occupation_BV_details_2012 <- read.csv("occupation_BV_details_2012.csv", stringsAsFactors = FALSE)
+occupation_BV_details_2012 <- occupation_BV_details_2012 %>%
+  mutate( CdOH = stringr::str_pad(as.character(CdOH), width = 8, side = "left", pad = "0")) %>%
+  mutate(pourcentage = as.numeric(pourcentage)) %>%
+  pivot_wider(
+    names_from = classe_regroupee,
+    values_from = pourcentage,
+    values_fill = 0)
+
+# Pour 2006
+occupation_BV_details_2006 <- read.csv("occupation_BV_details_2006.csv", stringsAsFactors = FALSE)
+occupation_BV_details_2006 <- occupation_BV_details_2006 %>%
+  mutate(CdOH = stringr::str_pad(as.character(CdOH), width = 8, side = "left", pad = "0")) %>%
+  mutate(pourcentage = as.numeric(pourcentage)) %>%
+  pivot_wider(
+    names_from = classe_regroupee,
+    values_from = pourcentage,
+    values_fill = 0)
+
+# Pour 2000
+occupation_BV_details_2000 <- read.csv("occupation_BV_details_2000.csv", stringsAsFactors = FALSE)
+occupation_BV_details_2000 <- occupation_BV_details_2000 %>%
+  mutate(CdOH = stringr::str_pad(as.character(CdOH), width = 8, side = "left", pad = "0")) %>%
+  mutate(pourcentage = as.numeric(pourcentage)) %>%
+  pivot_wider(
+    names_from = classe_regroupee,
+    values_from = pourcentage,
+    values_fill = 0)
+
+# Pour 1990
+occupation_BV_details_1990 <- read.csv("occupation_BV_details_1990.csv", stringsAsFactors = FALSE)
+occupation_BV_details_1990 <- occupation_BV_details_1990 %>%
+  mutate(CdOH = stringr::str_pad(as.character(CdOH), width = 8, side = "left", pad = "0")) %>%
+  mutate(pourcentage = as.numeric(pourcentage)) %>%
+  pivot_wider(
+    names_from = classe_regroupee,
+    values_from = pourcentage,
+    values_fill = 0)
 #### Table pour les cartes#######
 # Table donnee_carte: Résumé taxons par station
 resume_taxons_station <- taxons %>%
@@ -943,6 +992,11 @@ save( stations,
       occupation_BV_2006,
       occupation_BV_2012,
       occupation_BV_2018,
+      occupation_BV_details_1990,
+      occupation_BV_details_2000,
+      occupation_BV_details_2006,
+      occupation_BV_details_2012,
+      occupation_BV_details_2018,
       donnee_carte,
       donnee_carte_taxon,
   file = "C:/Users/pauline.deblock/Documents/stage Pauline/R/hydrobioNOR/dev/data_hydrobioNOR.rda")
