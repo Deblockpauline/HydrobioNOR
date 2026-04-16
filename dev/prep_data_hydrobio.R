@@ -137,10 +137,8 @@ uh <- sf::st_read(
   "C:/Users/pauline.deblock/Documents/stage Pauline/R/hydrobioNOR/données/UH/UH_actives_simplifiees.shp",
   quiet = TRUE)
 stations <- stations %>%
-  sf::st_as_sf(
-    coords = c("coordonnee_x", "coordonnee_y"),
-    crs = 2154,
-    remove = FALSE )
+  sf::st_drop_geometry() %>%
+  sf::st_as_sf(coords = c("coordonnee_x", "coordonnee_y"), crs = 2154, remove = FALSE)
 
 # Vérification des systèmes de coordonnées (CRS)
 sf::st_crs(uh)
@@ -171,6 +169,25 @@ stations %>%
 #On garde seulement les stations avec des indices
 stations <-stations %>%
   dplyr::semi_join(indices, by = "code_station")
+
+#On ajoute l'ID du bassin versant
+station_bv <- read.csv("station_bv.csv", stringsAsFactors = FALSE) # Import de la table station_bv
+station_bv <- station_bv %>% # On renome
+  dplyr::rename( id_BV = CdOH)
+
+station_bv <- station_bv %>% # Harmonisation des codes station sur 8 caractères
+  dplyr::mutate(
+    code_station = stringr::str_pad(
+      as.character(code_station),
+      width = 8,
+      side = "left",
+      pad = "0" ) )
+
+stations <- stations %>% #Jointure
+  dplyr::left_join(
+    station_bv %>%
+      dplyr::select(code_station, id_BV),
+    by = "code_station" )
 
 #### Mettre en forme Taxons#####
 taxons <- taxons %>%
@@ -390,7 +407,7 @@ etat_bio <- bind_rows(etat_bio, ips_info) %>%
 metriques <- indices %>%
   filter(code_indice %in% c(8058, 8056, 8057, 8054, 8050)) # On filtre pour avoir que les metriques de l'I2M2
 
-#### Table occupation du sol issue de QGIS####
+#### Table occupation du sol de la station issue de QGIS####
 # Pour 2018
 occupation_2018 <- read.csv("occupation_2018.csv", stringsAsFactors = FALSE)
 # Ayant deja réaliser sur QGIS ma table avec un buffer, une interserction avec CLC et des calculs dans la table attributaire et l'extraction de cette table
@@ -437,6 +454,58 @@ occupation_2000 <- occupation_2000 %>%
 occupation_1990 <- read.csv("occupation_90.csv", stringsAsFactors = FALSE)
 occupation_1990 <- occupation_1990 %>%
   mutate(code_station = stringr::str_pad(as.character(code_station), width = 8, side = "left", pad = "0")) %>%
+  mutate(pourcentage = as.numeric(pourcentage)) %>%
+  pivot_wider(
+    names_from = classe_regroupee,
+    values_from = pourcentage,
+    values_fill = 0)
+
+#### Table occupation du sol du BV #####
+
+# Pour 2018
+occupation_BV_2018 <- read.csv("occupation_BV_2018.csv", stringsAsFactors = FALSE)
+occupation_BV_2018 <- occupation_BV_2018 %>%
+  mutate(CdOH = stringr::str_pad(as.character(CdOH), width = 8, side = "left", pad = "0")) %>%
+  mutate(pourcentage = as.numeric(pourcentage)) %>%
+  pivot_wider(
+    names_from = classe_regroupee,
+    values_from = pourcentage,
+    values_fill = 0)
+
+# Pour 2012
+occupation_BV_2012 <- read.csv("occupation_BV_2012.csv", stringsAsFactors = FALSE)
+occupation_BV_2012 <- occupation_BV_2012 %>%
+  mutate( CdOH = stringr::str_pad(as.character(CdOH), width = 8, side = "left", pad = "0")) %>%
+  mutate(pourcentage = as.numeric(pourcentage)) %>%
+  pivot_wider(
+    names_from = classe_regroupee,
+    values_from = pourcentage,
+    values_fill = 0)
+
+# Pour 2006
+occupation_BV_2006 <- read.csv("occupation_BV_2006.csv", stringsAsFactors = FALSE)
+occupation_BV_2006 <- occupation_BV_2006 %>%
+  mutate(CdOH = stringr::str_pad(as.character(CdOH), width = 8, side = "left", pad = "0")) %>%
+  mutate(pourcentage = as.numeric(pourcentage)) %>%
+  pivot_wider(
+    names_from = classe_regroupee,
+    values_from = pourcentage,
+    values_fill = 0)
+
+# Pour 2000
+occupation_BV_2000 <- read.csv("occupation_BV_2000.csv", stringsAsFactors = FALSE)
+occupation_BV_2000 <- occupation_BV_2000 %>%
+  mutate(CdOH = stringr::str_pad(as.character(CdOH), width = 8, side = "left", pad = "0")) %>%
+  mutate(pourcentage = as.numeric(pourcentage)) %>%
+  pivot_wider(
+    names_from = classe_regroupee,
+    values_from = pourcentage,
+    values_fill = 0)
+
+# Pour 1990
+occupation_BV_1990 <- read.csv("occupation_BV_90.csv", stringsAsFactors = FALSE)
+occupation_BV_1990 <- occupation_BV_1990 %>%
+  mutate(CdOH = stringr::str_pad(as.character(CdOH), width = 8, side = "left", pad = "0")) %>%
   mutate(pourcentage = as.numeric(pourcentage)) %>%
   pivot_wider(
     names_from = classe_regroupee,
@@ -869,6 +938,11 @@ save( stations,
       occupation_2006,
       occupation_2000,
       occupation_1990,
+      occupation_BV_1990,
+      occupation_BV_2000,
+      occupation_BV_2006,
+      occupation_BV_2012,
+      occupation_BV_2018,
       donnee_carte,
       donnee_carte_taxon,
   file = "C:/Users/pauline.deblock/Documents/stage Pauline/R/hydrobioNOR/dev/data_hydrobioNOR.rda")
