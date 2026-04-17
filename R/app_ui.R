@@ -1,22 +1,21 @@
 #' Interface utilisateur de l'application
 #'
-#'#' @description
+#' @description
 #' Fonction UI principale de l'application Shiny.
 #' Elle définit l'organisation visuelle de l'application avec le titre,
 #' la zone de chargement des données, le panneau de filtres,
-#'  les onglets principaux, la carte et panneaux d'information
+#' les onglets principaux, la carte et les panneaux d'information.
 #'
 #' @param request Paramètre interne shiny
 #'
 #' @noRd
 
-app_ui <- function(request) { # Fonction qui defini l'interphase utilisateur
+app_ui <- function(request) { # Fonction qui définit l'interface utilisateur
   shiny::fluidPage( # Page principale de type fluide qui s'adapte
 
     shiny::titlePanel("HydrobioNOR"), # Titre principal de l'application
-
     shiny::fluidRow( # Zone d'affichage du module de chargement des données
-      shiny::column( # Creer une colonne et une ligne
+      shiny::column(
         width = 12,
         mod_load_data_ui("donnees") ) ),
 
@@ -28,44 +27,55 @@ app_ui <- function(request) { # Fonction qui defini l'interphase utilisateur
         style = "padding: 10px;", # Espace intérieur
         shiny::tags$h5("Filtres"), # Titre de la zone de filtres
         mod_selecteur_dep_ui("departements"),
-        mod_selecteur_eqb_ui("eqb"), # Affichage des filtres
+        mod_selecteur_eqb_ui("eqb"),
         mod_selecteur_UH_ui("uh") ),
 
       # Panneau principal contenant les onglets de l'application
       shiny::mainPanel(
         width = 10, # Zone principale plus large pour afficher les résultats
-        shiny::tabsetPanel( # Ensemble des onglets principaux
+        shiny::tabsetPanel(
 
-          #  1er onglet : Station
+          # 1er onglet : Station
           shiny::tabPanel(
             title = "Station",
             shiny::br(),
-            shiny::fluidRow( # Organisation en deux colonnes : carte à gauche, détails à droite
 
+            # Carte en haut sur toute la largeur
+            shiny::fluidRow(
               shiny::column(
-                width = 7, # Carte interactive des stations
-                mod_station_carte_ui("station_carte", hauteur = "600px") ),
+                width = 12,
+                mod_station_carte_ui("station_carte", hauteur = "500px") ) ),
 
+            shiny::br(), # Retour a la ligne
+
+            # Sous-onglets sous la carte
+            shiny::fluidRow(
               shiny::column(
-                width = 5, # Panneau de droite avec les sous-onglets d'information
+                width = 12,
                 shiny::tabsetPanel(
 
-                  # 1 er sous onglet
+                  # 1er sous-onglet
                   shiny::tabPanel(
                     title = "Informations générales",
-                    mod_station_infos_ui("station_infos") ),
+                    mod_station_infos_ui("station_infos")),
 
-                  # 2 eme sous onglet
+                  # 2e sous-onglet
                   shiny::tabPanel(
-                    title = "Contexte environnemental Station",
+                    title = "Contexte env. Station",
                     shiny::br(),
-                    mod_station_contexte_env_ui("station_contexte_env") )
+                    mod_station_contexte_env_ui("station_contexte_env")),
+
+                  # 3e sous-onglet
+                  shiny::tabPanel(
+                    title = "Contexte env. BV",
+                    shiny::br(),
+                    mod_station_contexte_env_bv_ui("station_contexte_env_bv") )
                 ) ) ) ),
 
-          # 2 eme Onglet
+          # 2e onglet : Communautés
           shiny::tabPanel(
-            title = "Communautés", # Onglet communautés
+            title = "Communautés",
             shiny::br(),
-            shiny::h4("À venir") )
-        ) ) ) )
+            shiny::h4("RDV la semaine pro") )
+ ) ) ) )
 }

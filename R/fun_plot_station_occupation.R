@@ -1,16 +1,20 @@
-#' Graphique d'occupation du sol pour une station
+#' Préparation des données d'occupation du sol pour une station
 #'
-#' @param table_occupation Table d'occupation du sol pour une année CLC
+#' @description Cette 1ere fonction prepare les données pour le graphique et le tableau
+#'
+#' @param donnees Liste contenant les objets de l'application
 #' @param station_id Code de la station sélectionnée
 #'
-#' @return Un graphique ggplot, ou NULL si aucune donnée
+#' @return Une liste contenant :
+#' - table_large : tableau avec les années en lignes et les catégories en colonnes
+#' - table_long : tableau au format long utilisé pour le graphique
+#' ou NULL si aucune donnée n'est disponible
 #' @noRd
 
-fun_plot_station_occupation <- function(table_occupation, station_id) {
+fun_prep_station_occupation <- function(donnees, station_id) {
 
-  # Verification des données d'entrée
-  if (is.null(table_occupation) || is.null(station_id) || is.na(station_id) || station_id == "") {
-    return(NULL) } # On verifie que les tables existe, qu'une satation est selctionnée et que ce n'est pas vide
+  if (is.null(donnees) || is.null(station_id) || is.na(station_id) || station_id == "") {
+    return(NULL) } # On vérifie que les données existent et qu'une station est bien sélectionnée
 
   # Harmonisation des code_station en rajoutant a 0 si il en manque 1 (sur QGIS ce n'est pas automatique)
   station_id <- stringr::str_pad(
@@ -19,72 +23,97 @@ fun_plot_station_occupation <- function(table_occupation, station_id) {
     side = "left", # A gauche
     pad = "0")
 
-  # Filtrage de la table pour ne conserver que la ligne correpondante
-  station_occ <- table_occupation %>%
-    dplyr::mutate(
-      code_station = stringr::str_pad(
-        as.character(.data$code_station), # Harmoniste les code_station
-        width = 8,
-        side = "left",
-        pad = "0") ) %>%
-    dplyr::filter(.data$code_station == station_id)
+  annees <- c("1990", "2000", "2006", "2012", "2018") # Vecteur des années CLC
 
-  #Verifie qu'une donnée existe sinon on arrete la fonction
-  if (nrow(station_occ) == 0) { return(NULL) }
+  # Construction d'une liste de tables, une par année
+  liste_tables <- purrr::map(annees, function(an) { # Creation d'une boucle pour
+    nom_table <- paste0("occupation_", an) # Nom de la table correspondant à l'année
+    if (!nom_table %in% names(donnees)) {return(NULL) } # Si elle existe pas -> année suivante
+    table_occ <- donnees[[nom_table]] # Récupération de la table d'occupation pour l'année
 
-  #Permet de garder que 1 ligne (sécurité)
-  station_occ <- station_occ[1, , drop = FALSE]
+    # Filtrage sur la station choisie
+    station_occ <- table_occ %>%
+      dplyr::mutate(
+        code_station = stringr::str_pad(
+          as.character(.data$code_station), # Harmonise les code_station = c'est une sécurité
+          width = 8,
+          side = "left",
+          pad = "0") ) %>%
+      dplyr::filter(.data$code_station == station_id) # Garde la ligne de la station choisie
 
-  # Permet de garder que les colonne utile au graphique
-  occ_long <- station_occ %>%
-    dplyr::select(
-      .data$Artificial,
-      .data$Agricultur,
-      .data$Foret,
-      .data$Zones_humi,
-      .data$Eau ) %>%
-    # Et de les trsanformer au format long apres le choix de la station réalisé
+    station_occ <- station_occ[1, , drop = FALSE] # On garde uniquement la 1ere ligne
+
+    # On garde uniquement les colonnes utiles et on ajoute l'année
+    station_occ %>%
+      dplyr::transmute(
+        annee = as.integer(an),
+        Artificial = as.numeric(.data$Artificial),
+        Agricultur = as.numeric(.data$Agricultur),
+        Foret = as.numeric(.data$Foret),
+        Zones_humi = as.numeric(.data$Zones_humi),
+        Eau = as.numeric(.data$Eau) )
+    }) # Fin de la boucle
+
+  table_large <- dplyr::bind_rows(liste_tables)  # Assemblage de tous en un seul tableau
+
+  # Transformation du tableau large en format long pour le graphique
+  table_long <- table_large %>%
     tidyr::pivot_longer(
-      cols = dplyr::everything(),
-      names_to = "occupation",
+      cols = c("Artificial", "Agricultur", "Foret", "Zones_humi", "Eau"), #Info
+      names_to = "occupation", # Nom de la colonne
       values_to = "pourcentage" ) %>%
-    # Mise en forle
     dplyr::mutate(
       occupation = factor(
-        .data$occupation, # On renome les catégorie
+        .data$occupation, # Renomme les catégories pour l'affichage
         levels = c("Artificial", "Agricultur", "Foret", "Zones_humi", "Eau"),
         labels = c("Artificialisation", "Agriculture", "Forêt", "Zones humides", "Eau") ),
 
-      label = dplyr::if_else(
-        .data$pourcentage >= 4, # Affiche les pourcentages sur le coté (seulement ceux > 4%)
-        paste0(round(.data$pourcentage, 1), " %"), # Par la suite on va creer un affichage pour les plus petit
-        "" ),
+      texte_survol = paste0( # Texte affiché au survol dans plotly
+        "Année : ", .data$annee,
+        "<br>Catégorie : ", as.character(.data$occupation),
+        "<br>Pourcentage : ", round(.data$pourcentage, 1), " %") )
 
-      texte_survol = paste0( # Creation de l'affichage des ù au survol
-        as.character(.data$occupation),
-        " : ",
-        round(.data$pourcentage, 1),
-        " %"),
-      barre = "Occupation" ) # Création de la barre pour avec une barre unique empilé
+  # Renommage aussi du tableau large pour le tableau
+  table_large <- table_large %>%
+    dplyr::rename(
+      "Artificialisation" = .data$Artificial,
+      "Agriculture" = .data$Agricultur,
+      "Forêt" = .data$Foret,
+      "Zones humides" = .data$Zones_humi,
+      "Eau" = .data$Eau ) %>%
+    dplyr::arrange(.data$annee) # Trie les lignes par année croissante
 
-  # Création du graphique
+  # Retourne les deux formats de table utiles pour le module
+  return(list(
+    table_large = table_large,
+    table_long = table_long ))
+}
+
+
+#' Graphique d'évolution de l'occupation du sol pour une station
+#'
+#' @param table_long Tableau au format long issu de fun_prep_station_occupation()
+#'
+#' @return Un graphique ggplot, ou NULL si aucune donnée
+#' @noRd
+
+fun_plot_station_occupation <- function(table_long) {
+  if (is.null(table_long) || nrow(table_long) == 0) { return(NULL) } # On vérifie que le tableau existe et contient des données
+
+  # Création du graphique multicourbe
   ggplot2::ggplot(
-    occ_long,
-    # Initialise le graphique
+    table_long, # Definition des bases
     ggplot2::aes(
-      x = .data$barre,
-      y = .data$pourcentage,
-      fill = .data$occupation,
-      text = .data$texte_survol ) ) +
+      x = .data$annee, # Année à l'horizontale
+      y = .data$pourcentage, # Pourcentage a la verticale
+      color = .data$occupation, # Une couleur diff par catégories
+      group = .data$occupation, # Une courbes diff par catégorie
+      text = .data$texte_survol ) ) + # Affichage du texte
+    ggplot2::geom_line(linewidth = 1) + # Trace les courbes d'évolution
+    ggplot2::geom_point(size = 2.8) + # Ajoute un point sur chaque année
 
-    ggplot2::geom_col(width = 0.5) + # Création des barre empilé
-    ggplot2::geom_text( # Ajout des textes
-      ggplot2::aes(label = .data$label),
-      position = ggplot2::position_stack(vjust = 0.5), # Au milieu de chaque catégorie
-      size = 4 ) +
-
-    #Definition des couleur
-    ggplot2::scale_fill_manual(
+    # Définition des couleurs des catégories
+    ggplot2::scale_color_manual(
       values = c(
         "Artificialisation" = "#F8766D",
         "Agriculture" = "#A3A500",
@@ -92,24 +121,29 @@ fun_plot_station_occupation <- function(table_occupation, station_id) {
         "Zones humides" = "#00B0F6",
         "Eau" = "#004B8D" ) ) +
 
-    # Reglage de l'axe des ordonnées
+    # Réglage de l'axe des ordonnées
     ggplot2::scale_y_continuous(
-      limits = c(0, 100), # De 0 à 100
+      limits = c(0, 100), # Pourcentage de 0 à 100
       expand = c(0, 0) ) + # Supprime l'espace blanc supplémentaire
 
+    # Réglage de l'axe des abscisses
+    ggplot2::scale_x_continuous(
+      breaks = sort(unique(table_long$annee)) ) + # Affiche uniquement les années présentes
+
     # Titre et légende
-     ggplot2::labs(
-      x = NULL,
+    ggplot2::labs(
+      title = "Évolution de l'occupation du sol dans un rayon de 5 km autour de la station",
+      x = "Année",
       y = "Pourcentage",
-      fill = NULL ) +
+      color = NULL ) +
+    ggplot2::theme_minimal() + # Theme sobre et léger
 
-    ggplot2::theme_minimal() + # theme_minimal() applique un thème sobre et léger
-
-    # On enlève la grille verticale, le texte et les graduations de l'axe x
-    # La légende est placée en bas du graphique.
+    # Mise en forme finale du graphique
     ggplot2::theme(
-      panel.grid.major.x = ggplot2::element_blank(),
-      axis.text.x = ggplot2::element_blank(),
-      axis.ticks.x = ggplot2::element_blank(),
-      legend.position = "bottom")
+      legend.position = "bottom", # Légende sous le graphique
+      panel.grid.minor = ggplot2::element_blank(), # Supprime la grille secondaire
+      plot.title = ggplot2::element_text( # Centre et met en gras le titre
+        hjust = 0.5,
+        face = "bold",
+        size = 6 ) )
 }

@@ -44,4 +44,9 @@ app_server <- function(input, output, session) {
     donnees = donnees,
     station_selectionnee = station_selectionnee )
 
+  #   Contexte environnemental du BV
+  mod_station_contexte_env_bv_server(
+    id = "station_contexte_env_bv",
+    donnees = donnees,
+    station_selectionnee = station_selectionnee)
   }
