@@ -238,109 +238,123 @@ indices <- indices %>%
 
 # On a toutes les informations necessaires pour la suite , comme dans IDF on va creer notre jeu de données etat_bio contenant l'EQR calculé
 
-#### Table etat_bio#####
-# Harmonisation des indices afin de pas avoir des soucis avec la manip suivante
+#### Table etat_bio ####
+# Harmonisation des types = bons formats (texte / numérique) pour éviter les erreurs plus loin
 indices <- indices %>%
-  mutate(
+  dplyr::mutate(
     code_station = as.character(code_station),
     code_indice = as.numeric(code_indice),
     annee = as.numeric(annee))
-# On garde les codes d'indices utile pour le calcul de l'EQR
+
+# On garde uniquement les stations avec une typologie renseignée (indispensable pour SEEE)
+stations_valides <- stations %>%
+  sf::st_drop_geometry() %>% # On enlève la géométrie (inutile ici)
+  dplyr::transmute(
+    code_station = as.character(code_station),
+    typologie = stringr::str_trim(as.character(typologie)))%>% # Nettoyage des espaces
+  dplyr::filter(!is.na(typologie), typologie != "") # On enlève les stations sans typologie
+
+# Codes d'indices:
+# 1022 = IPS ; 5856 = IBD
+# 7613 = I2M2 ; 5910 = IBG équivalent
+# 7036 = IPR ; 2928 = IBMR
 codes_etat_bio <- c(1022, 5856, 7613, 5910, 7036, 2928)
 
-# Creation de la nouvelle table issue d'indice en gardant seulement IPR, I2M2, IBMR, IPS, IBD et IBG eq
+# Création de la table d'indices utile pour l'état bio
 indices_etat_bio <- indices %>%
-  filter(code_indice %in% codes_etat_bio) %>%
-  mutate(
-    libelle_indice = case_when(
-      code_indice == 1022 ~ "IPS",
+  dplyr::filter(code_indice %in% codes_etat_bio) %>%
+  dplyr::inner_join(stations_valides, by = "code_station") %>%
+  dplyr::mutate(
+    libelle_indice = dplyr::case_when(
       code_indice == 5856 ~ "IBD",
       code_indice == 7613 ~ "I2M2",
       code_indice == 5910 ~ "IBG équivalent",
       code_indice == 7036 ~ "IPR",
       code_indice == 2928 ~ "IBMR",
-      TRUE ~ libelle_indice))
+      code_indice == 1022 ~ "IPS",
+      TRUE ~ libelle_indice ) )
 
-# Preparation stations SEEE car SEEE.API a besoin d'un format particulier
-stations_seee <- stations %>%
-  mutate(
+# Préparation des stations pour SEEE
+stations_seee <- indices_etat_bio %>%
+  dplyr::transmute(
     CODE_STATION = as.character(code_station),
     TYPO_NATIONALE = typologie,
-    TG_BV = if_else(str_detect(typologie, "TG"), "OUI", "NON"), # Permet d'afficher si y'a TG dans la typo ( important pour diatomée)
-    PERIODE_DEBUT = year(as.Date(date_premier_prelevement)),
-    PERIODE_FIN = year(as.Date(date_dernier_prelevement)),
-    PERIODE_DEBUT = coalesce(PERIODE_DEBUT, PERIODE_FIN),
-    PERIODE_FIN = coalesce(PERIODE_FIN, PERIODE_DEBUT)) %>% # Permet de gerer les NA d'année
-  filter(!is.na(TYPO_NATIONALE), !is.na(PERIODE_DEBUT), !is.na(PERIODE_FIN)) %>%
-  rowwise() %>%
-  mutate(ANNEE = list(seq(PERIODE_DEBUT, PERIODE_FIN))) %>%
-  unnest(ANNEE) %>% # Une ligne par station et par année
-  select(
+    TG_BV = dplyr::if_else(
+      stringr::str_detect(stringr::str_to_upper(typologie), "TG"),
+      "OUI",
+      "NON" ), # Indique si la typologie contient TG
+    ANNEE = lubridate::year(as.Date(date_prelevement))) %>%
+  dplyr::filter(!is.na(ANNEE)) %>% # On enlève les années non exploitables
+  dplyr::distinct(CODE_STATION, TYPO_NATIONALE, TG_BV, ANNEE) %>% # 1 ligne par station / année
+  dplyr::transmute(
     CODE_STATION,
     TYPO_NATIONALE,
     TG_BV,
     PERIODE_DEBUT = ANNEE,
-    PERIODE_FIN = ANNEE)
+    PERIODE_FIN = ANNEE )
 
-# Preparation de indice_SEEE car il faut un format particulier aussi sur indice
+# Préparation des indices au format attendu par SEEE
 indices_seee <- indices_etat_bio %>%
-  transmute(
+  dplyr::transmute(
     CODE_OPERATION = code_prelevement,
     CODE_STATION   = as.character(code_station),
     DATE           = format(as.Date(date_prelevement), "%d/%m/%Y"),
     CODE_PAR       = as.character(code_indice),
     LIB_PAR        = libelle_indice,
     RESULTAT       = resultat_indice ) %>%
-  filter(
+  dplyr::filter(
     !is.na(CODE_OPERATION),
     !is.na(CODE_STATION),
     !is.na(DATE),
     !is.na(CODE_PAR),
-    !is.na(RESULTAT))
+    !is.na(RESULTAT) ) # On enlève les lignes incomplètes
 
-# On ajoute ALT pour l'IPR = obligatoire
-# La valeur de 200m est utilisée par défaut car elle n'influence pas le calcul ici
+# Ajout du paramètre ALT pour l'IPR
+# Obligatoire pour que SEEE calcule correctement
 alt_ipr <- indices_etat_bio %>%
-  filter(code_indice == 7036) %>%
-  transmute(
+  dplyr::filter(code_indice == 7036) %>% # On cible uniquement l'IPR
+  dplyr::transmute(
     CODE_OPERATION = code_prelevement,
     CODE_STATION   = as.character(code_station),
     DATE           = format(as.Date(date_prelevement), "%d/%m/%Y")) %>%
-  distinct() %>%
-  mutate(
+  dplyr::distinct() %>% # Une ligne par opération
+  dplyr::mutate(
     CODE_PAR = "NA",
     LIB_PAR  = "ALT",
     RESULTAT = 200)
 
-indices_seee <- bind_rows(indices_seee, alt_ipr) # On joins les 2
+# On ajoute les lignes ALT dans la table SEEE
+indices_seee <- dplyr::bind_rows(indices_seee, alt_ipr)
 
- #On cree des sous-table par compartiment
+# Création des sous-tables par compartiment biologique
 indices_diat <- indices_seee %>%
-  filter(CODE_PAR %in% c("1022", "5856"))
+  dplyr::filter(CODE_PAR == "5856")
 indices_macro <- indices_seee %>%
-  filter(CODE_PAR == "2928")
+  dplyr::filter(CODE_PAR == "2928")
 indices_invert <- indices_seee %>%
-  filter(CODE_PAR == "7613")
-indices_poisson <- indices_seee %>%
-  filter(CODE_PAR %in% c("7036", "NA")) %>%
-  arrange(CODE_STATION, CODE_OPERATION, CODE_PAR)
+  dplyr::filter(CODE_PAR == "7613")
 
-as.tbl <- tibble::as_tibble
-# On calcule le SEEE 2018 comme IDF
+# Important : pour le poisson on garde IPR + ALT
+indices_poisson <- indices_seee %>%
+  dplyr::filter(CODE_PAR %in% c("NA", "7036")) %>%
+  dplyr::arrange(CODE_STATION, CODE_OPERATION, CODE_PAR)
+
+as.tbl <- tibble::as_tibble # Fonction neccessaire pour le script
+
+# Calcul SEEE 2018 (IBD, IBMR, I2M2, IPR)
 etat_2018 <- SEEEapi::calc_indic(
   indic = "EBio_CE_2018",
   version = "1.0.2",
   locally = TRUE,
-  dir_algo = "algo_seee", # Ficher telechargé de Cedric mondy qui contient l'agorythme necessaire
+  dir_algo = "algo_seee",
   data = list(
     stations_seee,
     indices_diat,
     indices_macro,
     indices_invert,
-    indices_poisson
-  ))$result
+    indices_poisson))$result
 
-# Puis le 2015
+# Calcul SEEE 2015 pour l'IBG équivalent
 etat_2015 <- SEEEapi::calc_indic(
   indic = "EBio_CE_2015",
   version = "1.0.1",
@@ -348,57 +362,54 @@ etat_2015 <- SEEEapi::calc_indic(
   dir_algo = "algo_seee",
   data = list(
     stations_seee,
-    indices_seee %>% slice(0),
-    indices_seee %>% slice(0),
-    indices_seee %>% filter(CODE_PAR == "5910"),
-    indices_seee %>% slice(0)
-  ))$result
+    indices_seee %>% dplyr::slice(0),
+    indices_seee %>% dplyr::slice(0),
+    indices_seee %>% dplyr::filter(CODE_PAR == "5910"),
+    indices_seee %>% dplyr::slice(0)))$result
 
-# Construction de la table finale des états biologiques :
-# on regroupe les résultats issus des calculs SEEE 2018 et 2015,
-# puis on les met dans un format lisible.
-
-etat_bio <- bind_rows(etat_2018, etat_2015) %>%
-  filter(!is.na(RESULTAT)) %>%
-  transmute(
+# Construction de la table finale etat_bio
+# On garde les résultats et la classe renvoyée par SEEE (même si EQR est vide)
+etat_bio <- dplyr::bind_rows(etat_2018, etat_2015) %>%
+  dplyr::filter(!is.na(RESULTAT)) %>%
+  dplyr::transmute(
     code_station    = as.character(CODE_STATION),
     annee           = as.numeric(PERIODE_DEBUT),
     code_indice     = suppressWarnings(as.numeric(as.character(CODE_PAR))),
     libelle_indice  = as.character(LIB_PAR),
     resultat_indice = as.numeric(gsub(",", ".", as.character(RESULTAT))),
     eqr_indice      = as.numeric(gsub(",", ".", as.character(EQR))),
-    classe_indice   = na_if(as.character(CLASSE), "") ) %>%
-  left_join(
+    classe_indice   = dplyr::na_if(as.character(CLASSE), "") ) %>%
+  dplyr::left_join(
     indices_etat_bio %>%
-      distinct(code_indice, code_support, libelle_support),
-    by = "code_indice" ) %>%
-  mutate(
-    libelle_indice = case_when(
-      code_indice == 1022 ~ "IPS",
+      dplyr::distinct(code_indice, code_support, libelle_support),
+    by = "code_indice") %>%
+  dplyr::mutate(
+    libelle_indice = dplyr::case_when(
       code_indice == 5856 ~ "IBD",
       code_indice == 7613 ~ "I2M2",
       code_indice == 5910 ~ "IBG équivalent",
       code_indice == 7036 ~ "IPR",
       code_indice == 2928 ~ "IBMR",
-      TRUE ~ libelle_indice ) ) %>%
-  distinct() %>%
-  arrange(code_station, annee, code_indice)
+      TRUE ~ libelle_indice)) %>%
+  dplyr::distinct() %>%
+  dplyr::arrange(code_station, annee, code_indice)
 
-# Ajouter l'IPS à titre informatif dans etat_bio sans calculer EQR
+# Ajout de l'IPS à titre informatif (pas de calcul SEEE)
 ips_info <- indices_etat_bio %>%
   filter(code_indice == 1022) %>%
   transmute(
     code_station    = as.character(code_station),
-    annee           = year(as.Date(date_prelevement)),
+    annee           = lubridate::year(as.Date(date_prelevement)),
     code_indice     = 1022,
     libelle_indice  = "IPS",
     resultat_indice = as.numeric(resultat_indice),
     eqr_indice      = NA_real_,
     classe_indice   = NA_character_,
     code_support,
-    libelle_support ) %>%
+    libelle_support) %>%
   distinct()
-# Ajouter dans etat_bio
+
+# Ajout de l'IPS dans la table finale
 etat_bio <- bind_rows(etat_bio, ips_info) %>%
   distinct() %>%
   arrange(code_station, annee, code_indice)
@@ -561,6 +572,11 @@ occupation_BV_details_1990 <- occupation_BV_details_1990 %>%
     names_from = classe_regroupee,
     values_from = pourcentage,
     values_fill = 0)
+# Surface des BV
+
+surface_BV<- read.csv("BV_surface.csv", stringsAsFactors = FALSE)
+
+
 #### Table pour les cartes#######
 # Table donnee_carte: Résumé taxons par station
 resume_taxons_station <- taxons %>%
@@ -997,6 +1013,7 @@ save( stations,
       occupation_BV_details_2006,
       occupation_BV_details_2012,
       occupation_BV_details_2018,
+      surface_BV,
       donnee_carte,
       donnee_carte_taxon,
   file = "C:/Users/pauline.deblock/Documents/stage Pauline/R/hydrobioNOR/dev/data_hydrobioNOR.rda")
