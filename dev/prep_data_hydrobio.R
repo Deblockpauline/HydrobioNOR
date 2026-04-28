@@ -204,8 +204,7 @@ taxons <- taxons %>%
     libelle_taxon= libelle_appel_taxon,
     resultat_taxon,
     code_phase= code_lot,
-    code_remarque= code_type_resultat
-  ) %>%
+    code_remarque= code_type_resultat ) %>%
   dplyr::mutate(date_prelevement = as.Date(date_prelevement)) %>% # Mettre au bon format l'année
   dplyr::group_by(code_prelevement) %>%
   dplyr::mutate(abondance_relative = resultat_taxon / sum(resultat_taxon, na.rm = TRUE)) %>%
@@ -226,12 +225,10 @@ indices <- indices %>%
     libelle_indice,
     resultat_indice,
     code_qualification,
-    libelle_qualification
-  ) %>%
+    libelle_qualification) %>%
   dplyr::mutate(
     date_prelevement = as.Date(date_prelevement),
-    annee = year(date_prelevement)
-  ) %>%
+    annee = year(date_prelevement) ) %>%
   dplyr::filter(code_indice %in% c(  # Filtrer les indices
     "1022","5856","7613","5910","7036",
     "2928","8058","8056","8057","8054","8050"))
@@ -321,7 +318,7 @@ alt_ipr <- indices_etat_bio %>%
   dplyr::mutate(
     CODE_PAR = "NA",
     LIB_PAR  = "ALT",
-    RESULTAT = 200)
+    RESULTAT = 200) # 200 = valeur par defaut, n'influence pas
 
 # On ajoute les lignes ALT dans la table SEEE
 indices_seee <- dplyr::bind_rows(indices_seee, alt_ipr)
@@ -394,7 +391,7 @@ etat_bio <- dplyr::bind_rows(etat_2018, etat_2015) %>%
   dplyr::distinct() %>%
   dplyr::arrange(code_station, annee, code_indice)
 
-# Ajout de l'IPS à titre informatif (pas de calcul SEEE)
+# On prend seulement l'IPS
 ips_info <- indices_etat_bio %>%
   filter(code_indice == 1022) %>%
   transmute(
@@ -643,7 +640,7 @@ donnee_carte_taxon <- taxons %>%
     code_station,
     libelle_station, # Regroupement
     code_support,
-    libelle_taxon ) %>%
+    libelle_taxon) %>%
   summarise(
     abondance_moyenne = mean(resultat_taxon, na.rm = TRUE),
     annee_min = min(annee, na.rm = TRUE),
@@ -830,15 +827,12 @@ entree_diat <- taxons_diat_prep %>%
     CODE_TAXON,
     RESULTAT )
 
-
-
 #### Table valeur_seuil_taxon ####
 # Récupération de la liste des fichiers de paramètres des indices dans le dossier des algorithmes SEEE version 2018.
-# Full.names = TRUE permet d'obtenir le chemin complet des fichiers.
 fichiers_parametres <- list.files(
   path = "algo_seee/EBio_CE_2018/1.0.1",
   pattern = "params",
-  full.names = TRUE)
+  full.names = TRUE) # permet d'obtenir le chemin complet des fichiers
 
 # Ajout du fichier IBG-DCE de la méthode 2015, meme fonctionnement que etat_bio (cas exceptionnel)
 fichiers_parametres <- c( fichiers_parametres[!stringr::str_detect(fichiers_parametres, "IBG-DCE")],
@@ -930,8 +924,7 @@ valeur_seuil_taxon <- stations_seee |>
         dplyr::left_join(
           valeurs_seuils$I2M2,
           by = c("typologie" = "TYPO_NATIONALE")),
-      )
-  })() |>
+      ) } )() |>
   dplyr::mutate(
     seuil_haut = ifelse(is.na(seuil_bas), NA, seuil_haut)) |>
   dplyr::select(
