@@ -15,6 +15,9 @@ mod_station_contexte_env_ui <- function(id) {
 
     # Titre principal du module
     shiny::h4("Contexte environnemental Station"),
+
+    # Message affiché tant qu'aucune station n'est sélectionnée
+    shiny::uiOutput(ns("message_selection_station")),
     shiny::br(),
 
     # Graphique interactif centré dans le panneau
@@ -60,6 +63,14 @@ mod_station_contexte_env_ui <- function(id) {
 mod_station_contexte_env_server <- function(id, donnees, station_selectionnee) {
   shiny::moduleServer(id, function(input, output, session) {
 
+    # Message simple si aucune station n'est encore sélectionnée
+    output$message_selection_station <- shiny::renderUI({
+      if (is.null(station_selectionnee()) || station_selectionnee() == "") {
+        shiny::div(
+          style = "color: #666; font-style: italic;",
+          "Veuillez sélectionner une station sur la carte pour afficher le contexte environnemental.")
+      } else {NULL } })
+
     # Reactive préparant les données d'occupation du sol
     # pour la station sélectionnée sur l'ensemble des années
     occupation_station <- shiny::reactive({ # Réactive preparant les données
@@ -98,7 +109,10 @@ mod_station_contexte_env_server <- function(id, donnees, station_selectionnee) {
           displaylogo = FALSE, # Pas le logo Ploty
           toImageButtonOptions = list( # Caracteristique
             format = "png", # Export en PNG
-            filename = "evolution_occupation_sol_station",
+            filename = paste0( "evolution_occupation_sol_station_",
+              if (is.null(station_selectionnee()) || station_selectionnee() == "") {
+                "station_inconnue" }
+              else { station_selectionnee() } ),
             height = 700,
             width = 1100, # Taille du fichier
             scale = 1 ) ) # Résolution
@@ -170,3 +184,9 @@ mod_station_contexte_env_server <- function(id, donnees, station_selectionnee) {
           fileEncoding = "UTF-8" )
       } ) } )
 }
+
+## À appeler dans l'UI
+# mod_station_contexte_env_ui ("station_contexte_env")
+
+## À appeler dans le server
+# mod_station_contexte_env_server("station_contexte_env")

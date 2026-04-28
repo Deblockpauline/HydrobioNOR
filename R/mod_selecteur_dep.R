@@ -44,3 +44,9 @@ mod_selecteur_dep_server <- function(id, donnees) {
     } )
     return(shiny::reactive(input$departement)) # Renvoie le dep séléctionné en réactive
   } ) }
+
+## À appeler dans l'UI
+# mod_selecteur_dep_ui("departements")
+
+## À appeler dans le server
+# mod_selecteur_dep_server("departements")

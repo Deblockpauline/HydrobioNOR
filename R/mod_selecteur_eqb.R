@@ -1,30 +1,45 @@
 #' Module UI du sélecteur EQB
 #'
 #' @param id Identifiant du module
+#'
 #' @noRd
-
 mod_selecteur_eqb_ui <- function(id) {
   ns <- shiny::NS(id)
-  shiny::tagList( # Menu déroulant pour choisir l'élément de qualité biologique
+
+  shiny::tagList(
     shiny::selectInput(
-      inputId = ns("indice"),
+      inputId = ns("eqb"),
       label = "Élément de qualité biologique",
       choices = c(
         "Tous",
         "Diatomées",
         "Macroinvertébrés",
         "Macrophytes",
-        "Poissons"),
-      selected = "Tous" # Valeur par défauts
-    ) ) }
+        "Poissons"
+      ),
+      selected = "Tous"
+    )
+  )
+}
 
 #' Module server du sélecteur EQB
 #'
 #' @param id Identifiant du module
+#'
+#' @return Une reactive contenant l'EQB sélectionné
 #' @noRd
-
 mod_selecteur_eqb_server <- function(id) {
   shiny::moduleServer(id, function(input, output, session) {
-    return(shiny::reactive(input$indice) )  # Renvoie la valeur sélectionnée (reactive)
-  } ) }
-# Module assez simple car les compartiments biologique sont deja connus et ne change pas donc une simple réactie suffit
+
+    shiny::reactive({
+      input$eqb
+    })
+
+  })
+}
+
+## À appeler dans l'UI
+# mod_selecteur_eqb_ui ("eqb")
+
+## À appeler dans le server
+# mod_selecteur_eqb_server("eqb")

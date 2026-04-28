@@ -1,12 +1,8 @@
 #' carte UI Function
 #'
-#' @description Module Shiny permettant d'afficher une carte interactive des stations de suivi.
-#'
-#' @param id Internal parameter for {shiny}.
-#' @param input,output,session Internal parameters for {shiny}.
+#' @description Module Shiny permettant d'afficher une carte interactive des stations de suivi
 #'
 #' @noRd
-#'
 #' @importFrom shiny NS tagList
 #' @importFrom leaflet leafletOutput
 #' @export
@@ -21,7 +17,7 @@ mod_station_carte_ui <- function(id, hauteur = "700px") { # Hauteur de la carte
       label = "Rechercher une station", # Texte affiché
       choices = NULL,
       selected = NULL,
-      multiple = FALSE,
+      multiple = FALSE, # 1 Station a la fois
       options = list(
         placeholder = "Tapez le nom ou le code d'une station", # Liste déroulante
         maxOptions = 10000) ), # Afin de voir toutes les stations
@@ -30,7 +26,7 @@ mod_station_carte_ui <- function(id, hauteur = "700px") { # Hauteur de la carte
     leaflet::leafletOutput(ns("carte_stations"), height = hauteur) ) }
 
 #' Carte server Function
-#' @description Module shiny qui permet d'afficher les données voulu sur la carte
+#' @description Module shiny qui permet d'afficher les données sur la carte
 #'
 #' @param choix_departements Reactive contenant les départements sélectionnés
 #' @param choix_eqb Reactive contenant les EQB sélectionnés
@@ -89,9 +85,7 @@ mod_station_carte_server <- function(id,
           UH_calculee %in% choix_uh()) }
 
       shiny::req(nrow(df) > 0) # Vérifie qu'il reste au moins une station après filtrage
-
-      # Conversion en WGS84 (EPSG:4326), nécessaire pour l'affichage avec leaflet
-      sf::st_transform(df, 4326)
+      sf::st_transform(df, 4326) # Conversion en WGS84 (EPSG:4326), obligatoire
     } )
 
     # Limites régionales affichées sur la carte
@@ -102,6 +96,10 @@ mod_station_carte_server <- function(id,
     # Couche des cours d'eau affichée sur la carte
     limites_cours_eau_carte <- shiny::reactive({
       sf::st_transform(limites_cours_eau, 4326) } ) # Conversion en WGS84 pour leaflet
+
+    # Couche des bassins versants affichée sur la carte
+    limites_bv_carte <- shiny::reactive({
+      sf::st_transform(limites_bv_l, 4326) } ) # Conversion en WGS84 pour leaflet
 
     # Mise à jour de la liste déroulante selon les stations actuellement filtrées
     shiny::observe({ # Bloc réactif qui se réexécute dès qu'on change le choix
@@ -129,6 +127,7 @@ mod_station_carte_server <- function(id,
       df <- stations_filtrees() # Stations filtrées à afficher
       limites_region <- limites_region_carte() # Limites administratives
       cours_eau <- limites_cours_eau_carte() # Cours d'eau
+      bassins_versants <- limites_bv_carte() # Bassins versants
       coords <- sf::st_coordinates(df) # Extraction des coordonnées des stations
 
       # Calcul du centre moyen pour centrer la carte au chargement
@@ -138,6 +137,7 @@ mod_station_carte_server <- function(id,
       leaflet::leaflet(data = df) %>% # Initialise la carte avec les stations
         leaflet::addTiles() %>% # Ajoute le fond de carte OpenStreetMap
         leaflet::addMapPane("hydro", zIndex = 405) %>% # Plan dédié aux cours d'eau
+        leaflet::addMapPane("bv", zIndex = 408) %>% # Plan dédié aux bassins versants
         leaflet::addMapPane("limites", zIndex = 410) %>% # Plan dédié aux limites régionales
         leaflet::addMapPane("points", zIndex = 420) %>% # Plan dédié aux stations, affiché au-dessus
         leaflet::setView(
@@ -149,12 +149,21 @@ mod_station_carte_server <- function(id,
           color = "#2C7FB8",
           opacity = 0.7,
           weight = 1,
+          group = "Cours d'eau",
           options = leaflet::pathOptions(pane = "hydro") ) %>%
+        leaflet::addPolylines( # Ajout des limites des bassins versants
+          data = bassins_versants,
+          color = "red",
+          opacity = 0.8,
+          weight = 1.2,
+          group = "Bassins versants",
+          options = leaflet::pathOptions(pane = "bv") ) %>%
         leaflet::addPolylines( # Ajout des limites régionales
           data = limites_region,
           color = "black",
           opacity = 1,
           weight = 2,
+          group = "Limites administratives",
           options = leaflet::pathOptions(pane = "limites") ) %>%
         leaflet::addCircleMarkers( # Ajout des points représentant les stations
           radius = 6, # Taille des points
@@ -170,7 +179,11 @@ mod_station_carte_server <- function(id,
             "<b>", libelle_station, "</b><br/>", # <b> = texte en gras
             "Code station : ", code_station, "<br/>", # <br/> = retour à la ligne
             "Cours d'eau : ", libelle_cours_eau, "<br/>",
-            "Département : ", code_dep ) )
+            "Département : ", code_dep ) ) %>%
+        leaflet::addLayersControl( # Panneau pour afficher ou masquer les couches de fond
+          overlayGroups = c("Limites administratives", "Cours d'eau", "Bassins versants"),
+          options = leaflet::layersControlOptions(collapsed = FALSE) ) %>%
+        leaflet::hideGroup("Bassins versants") # Masque les bassins versants au démarrage pour alléger la carte
     } )
 
     # Mise à jour des points affichés quand les filtres changent
@@ -264,4 +277,3 @@ mod_station_carte_server <- function(id,
 
 ## À appeler dans le server
 # mod_station_carte_server("station_carte")
-

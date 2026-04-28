@@ -1,15 +1,12 @@
-#' Préparation des données détaillées d'occupation du sol du bassin versant
+#' Préparation des données détaillées d'occupation du sol du bv
 #'
-#' @description Cette fonction prépare les données détaillées d'occupation du sol du bassin versant
-#'
-#' On part du `code_station`, on récupère le bassin versant correspondant via `id_BV.y`
+#' @description On part du `code_station`, on récupère le bv correspondant via `id_BV`
 #' qui est recherché dans la colonne `CdOH` de la table `occupation_BV_details_xxxx`
 #' C'est le meme fonctionnement que fun_plot_bv_occupation sauf que ici, pas de boucle car on travaille sur 1 année
 #'
 #' @param donnees Liste contenant les objets de l'application
 #' @param station_id Code de la station sélectionnée
 #' @param annee Année choisie pour afficher le camembert
-#'
 #' @return Un tableau détaillé prêt pour le graphique, ou NULL si aucune donnée
 #' @noRd
 
@@ -18,10 +15,7 @@ fun_prep_bv_occupation_detail <- function(donnees, station_id, annee) {
   #Verification
   if (is.null(donnees) || is.null(station_id) || is.na(station_id) || station_id == "") {
     return(NULL)} # Vérifie que les données existent et qu'une station est bien sélectionnée
-  if (is.null(annee) || is.na(annee) || annee == "") {return(NULL)} # Vérifie qu'une année a bien été choisie
-  if (!"stations" %in% names(donnees)) {return(NULL)} # Vérifie que la table stations existe dans donnees
   stations <- donnees$stations # Récupère la table stations dans un objet plus simple
-  if (is.null(stations) || nrow(stations) == 0) {return(NULL)} # Vérifie que la table stations n'est ni nulle ni vide
 
   # Harmonisation du code station sélectionné
   station_id <- stringr::str_pad(
@@ -29,7 +23,6 @@ fun_prep_bv_occupation_detail <- function(donnees, station_id, annee) {
     width = 8, # Force un format sur 8 caractères
     side = "left", # Rajoute les 0 à gauche
     pad = "0" )# Caractère utilisé pour compléter
-
 
   # Harmonisation des identifiants dans la table stations
   stations <- stations %>%
@@ -39,14 +32,13 @@ fun_prep_bv_occupation_detail <- function(donnees, station_id, annee) {
         width = 8, # Même format sur 8 caractères
         side = "left", # Rajoute les 0 à gauche si besoin
         pad = "0"),
-      id_BV.y = as.character(.data$id_BV.y)) # Transforme id_BV.y en caractère pour la comparaison
+      id_BV = as.character(.data$id_BV)) # Transforme id_BV en caractère pour la comparaison
 
   station_info <- stations %>%
     dplyr::filter(.data$code_station == station_id) # Garde uniquement la ligne de la station choisie
 
   # Récupération de l'identifiant du bassin versant
-  id_bv <- station_info$id_BV.y[1] # On prend le 1er identifiant de BV trouvé
-
+  id_bv <- station_info$id_BV[1] # On prend le 1er identifiant de BV trouvé
   nom_table <- paste0("occupation_BV_details_", annee) # Construit le nom de la table selon l'année choisie
   table_occ <- donnees[[nom_table]] # Récupère la table d'occupation détaillée de l'année choisie
 
@@ -73,7 +65,7 @@ fun_prep_bv_occupation_detail <- function(donnees, station_id, annee) {
     dplyr::mutate(
       texte_survol = paste0( # Crée le texte qui s'affichera au survol
         "Catégorie : ", .data$occupation_detail,
-        "<br>Pourcentage : ", round(.data$pourcentage, 1), " %")
+        "<br>Pourcentage : ", round(.data$pourcentage, 1), " %"))
 
   return(table_detail) # Retourne le tableau final prêt pour le camembert
 }

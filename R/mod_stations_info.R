@@ -134,3 +134,10 @@ mod_station_infos_server <- function(id, donnees, station_selectionnee) {
             valeur_si_existe("StrahlMax") )
         ) ) } )
   } ) }
+
+## À appeler dans l'UI
+# mod_station_infos_ui ("station_infos")
+
+## À appeler dans le server
+# mod_station_infos_server("station_infos")
+

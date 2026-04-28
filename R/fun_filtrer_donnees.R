@@ -1,28 +1,24 @@
 #' Fonctions de filtrage des données
 #' @description
 #' Fonctions pour filtrer les données de l'application
-#' selon les filtres globaux ou la station sélectionnée.
 #' @noRd
 
 #' 1) Filtrer les stations selon les filtres globaux
 #'
 #' @description
-#' Cette fonction filtre la table des stations selon  le département ou
-#' l'unité hydrographique sélectionnée
+#' Cette fonction filtre la table des stations selon  le département ou l'UH
 #' Le filtre EQB est géré directement dans le module de carte à partir d'une table annexe
 #'
 #' @param station Table des stations
 #' @param choix_departement Département sélectionné
 #' @param choix_uh Unité hydrographique sélectionnée
 #'
-#' @return Une table des stations filtrées
+#' @return une table des stations filtrées
 #' @export
 
 filtrer_stations <- function(station, # Creation de la fonction
                              choix_departement = "Tous",
                              choix_uh = "Toutes") {
-
-  if (is.null(station)) {return(NULL)} # Sécurité : si la table station est NULL, on retourne NULL
   station_filtree <- station # Initialisation : on travaille sur une copie de la table
 
   # Filtre département
@@ -47,12 +43,10 @@ filtrer_stations <- function(station, # Creation de la fonction
 
   return(station_filtree) } # Retour du résultat final
 
-#' Filtrer une table selon les filtres globaux
+#' 2) Filtrer une table selon les filtres globaux
 #' @description
-#' Cette fonction filtre une table de données selon le(s) départements et le(s) EQB sélectionnés
-#' NB : pas de filtre UH ici car toutes les tables ne contiennent pas cette variable
-#' Elle est utile notamment pour les tables contenant directement
-#' une colonne `eqb`, `libelle_support` ou `libelle_indice`.
+#' Cette fonction filtre une table de données selon le départements et l'EQB sélectionnés
+#' Pas de filtre UH ici car toutes les tables ne contiennent pas cette variable
 #'
 #' @param data Table à filtrer
 #' @param choix_departements Département sélectionné
@@ -63,8 +57,7 @@ filtrer_stations <- function(station, # Creation de la fonction
 filtrer_donnees <- function(data,
                             choix_departements = NULL,
                             choix_eqb = NULL) {
-  if (is.null(data)) { return(NULL) } # Sécurité : si pas de données
-  data_filtree <- data #  Création d'une copie
+  data_filtree <- data # Création d'une copie
 
   # Filtre département (meme condition que Fonction 1)
   if (!is.null(choix_departements) &&
@@ -76,6 +69,7 @@ filtrer_donnees <- function(data,
       code_dep %in% choix_departements)}
 
   # Filtre EQB (meme cond. que Fonction 1)
+  # Ici differents cas selon le libelle de la colonnne voulue
   if (!is.null(choix_eqb) &&
       length(choix_eqb) > 0 &&
       !("Tous" %in% choix_eqb)) {
@@ -100,23 +94,17 @@ filtrer_donnees <- function(data,
 
    return(data_filtree) } # Retour de la table filtrée
 
-#' Filtrer une table selon la station sélectionnée
+#' 3) Filtrer une table selon la station sélectionnée
 #'
-#' @description
-#' Cette fonction filtre une table selon le code de la station sélectionnée.
 #' @param data Table contenant une colonne `code_station`
 #' @param choix_station Code de la station sélectionnée
 #' @return La table filtrée
 #' @export
 
 filtrer_par_station <- function(data, choix_station = NULL) {
-  if (is.null(data)) { return(NULL) } # Sécurités de base
 
   # Si aucune station n'est sélectionnée, retourne la table entière
   if (is.null(choix_station) || length(choix_station) == 0) { return(data) }
-
-  # Si la table ne possède pas de colonne code_station, aucun filtrage possible
-  if (!("code_station" %in% names(data))) { return(data) }
 
    # Filtrage sur la station sélectionnée
   data_filtree <- dplyr::filter(

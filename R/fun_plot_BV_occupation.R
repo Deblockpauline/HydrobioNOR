@@ -1,10 +1,9 @@
-#' Préparation des données d'occupation du sol du bassin versant d'une station
+#' Préparation des données d'occupation du sol du bv d'une station
 #'
 #' @description Cette 1ere fonction prepare les données pour le graphique et le tableau
 #' Le script est un peu plus detaillé dans les scripts pour l'occupation de la station
-#'
 #' La station sélectionnée est identifiée par son `code_station`,
-#' dans la table `stations`, on récupère son identifiant de bassin versant `id_BV.y`
+#' dans la table `stations`, on récupère son identifiant de bassin versant `id_BV`
 #' et cet identifiant est recherché dans la colonne `CdOH` des tables d'occupation
 #'
 #' @param donnees Liste contenant les objets de l'application
@@ -21,9 +20,7 @@ fun_prep_bv_occupation <- function(donnees, station_id) {
 
   if (is.null(donnees) || is.null(station_id) || is.na(station_id) || station_id == "") {
     return(NULL) }  # On vérifie que les données existent et qu'une station est bien sélectionnée
-  if (!"stations" %in% names(donnees)) {  return(NULL) } # On verifie la presence de la table stations
   stations <- donnees$stations # On recupere la table
-  if (is.null(stations) || nrow(stations) == 0) {return(NULL)} # On verifie que c'est ni null ni vide
 
   # Harmonisation du code selectionné
   station_id <- stringr::str_pad(
@@ -39,12 +36,12 @@ fun_prep_bv_occupation <- function(donnees, station_id) {
         width = 8,
         side = "left",
         pad = "0" ),
-      id_BV.y = as.character(.data$id_BV.y) ) #Transformer en caractere car c'est l'iddentifiant
+      id_BV = as.character(.data$id_BV) ) #Transformer en caractere car c'est l'iddentifiant
 
   # Récupération du bassin versant de la station
   station_info <- stations %>% # On filtre la table pour garder la station selectionnee
     dplyr::filter(.data$code_station == station_id)
-  id_bv <- station_info$id_BV.y[1] # On recupere le 1er ID-BV
+  id_bv <- station_info$id_BV[1] # On recupere le 1er ID-BV
   if (is.null(id_bv) || is.na(id_bv) || id_bv == "") { return(NULL) } # Vérifie que l'identifiant du bassin versant existe bien
 
   annees <- c("1990", "2000", "2006", "2012", "2018") # Vecteur des années
@@ -114,9 +111,7 @@ fun_prep_bv_occupation <- function(donnees, station_id) {
 
 
 #' Graphique d'évolution de l'occupation du sol du bassin versant
-#'
 #' @param table_long Tableau au format long issu de fun_prep_bv_occupation()
-#'
 #' @return Un graphique ggplot, ou NULL si aucune donnée
 #' @noRd
 

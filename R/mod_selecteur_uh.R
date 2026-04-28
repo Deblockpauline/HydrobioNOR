@@ -45,3 +45,9 @@ mod_selecteur_UH_server <- function(id, stations) {
     # Valeur retournée = Reactive contenant l'UH sélectionnée
     return(shiny::reactive(input$uh))
   } ) }
+
+## À appeler dans l'UI
+# mod_selecteur_UH_ui ("uh")
+
+## À appeler dans le server
+# mod_selecteur_UH_server("uh")

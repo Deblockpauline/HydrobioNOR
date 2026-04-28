@@ -118,7 +118,7 @@ fun_plot_station_occupation <- function(table_long) {
         "Artificialisation" = "#F8766D",
         "Agriculture" = "#A3A500",
         "Forêt" = "#00BF7D",
-        "Zones humides" = "#00B0F6",
+        "Zones humides" = "#7B3A96",
         "Eau" = "#004B8D" ) ) +
 
     # Réglage de l'axe des ordonnées

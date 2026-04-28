@@ -25,6 +25,7 @@ mod_load_data_server <- function(id) {
     donnees <- shiny::reactive({ # Reactive qui télécharge et charge les données
       fichier_temp <- tempfile(fileext = ".rda")  # Création d'un fichier temporaire pour stocker le .rda
       url_data <- "https://raw.githubusercontent.com/Deblockpauline/HydrobioNOR/main/dev/data_hydrobioNOR.rda"
+      options(timeout = 300) # Augmente le temps max de téléchargement à 5 minutes
       utils::download.file(   # Téléchargement du fichier
         url = url_data,
         destfile = fichier_temp,
@@ -45,3 +46,9 @@ mod_load_data_server <- function(id) {
       } else {"Date non disponible"}
     } )
     return(donnees) } ) } # Renvoie les données pour les autres modules
+
+## À appeler dans l'UI
+# mod_load_data_ui("donnees")
+
+## À appeler dans le server
+# mod_load_data_server("donnees")

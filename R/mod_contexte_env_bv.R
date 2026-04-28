@@ -14,6 +14,13 @@ mod_station_contexte_env_bv_ui <- function(id) {
 
     # Titre principal du module
     shiny::h4("Contexte environnemental du bassin versant"),
+
+    # Message affiché tant qu'aucune station n'est sélectionnée
+    shiny::uiOutput(ns("message_selection_station")),
+    shiny::br(),
+
+    # Affichage de la surface du bassin versant
+    shiny::uiOutput(ns("surface_bv")),
     shiny::br(),# Retour a la ligne
 
     # Graphique interactif centré dans le panneau
@@ -100,6 +107,16 @@ mod_station_contexte_env_bv_ui <- function(id) {
 mod_station_contexte_env_bv_server <- function(id, donnees, station_selectionnee) {
   shiny::moduleServer(id, function(input, output, session) { # Lance la partie server du module
 
+    # Message simple si aucune station n'est encore sélectionnée
+    output$message_selection_station <- shiny::renderUI({
+      if (is.null(station_selectionnee()) || station_selectionnee() == "") {
+        shiny::div(
+          style = "color: #666; font-style: italic;",
+          "Veuillez sélectionner une station sur la carte pour afficher le contexte environnemental.")
+      } else {NULL } })
+
+# Preparation des réactives
+
     occupation_bv <- shiny::reactive({ # Réactive préparant les données du graphique + tableau
       shiny::req(donnees()) # Obligatoire : les données doivent être chargées
       shiny::req(station_selectionnee()) # Obligatoire : une station doit être sélectionnée
@@ -118,7 +135,26 @@ mod_station_contexte_env_bv_server <- function(id, donnees, station_selectionnee
         station_id = station_selectionnee(), # Code de la station sélectionnée
         annee = input$annee_bv_detail ) } ) # Année choisie dans le selectInput
 
+    surface_bv <- shiny::reactive({ # Reactive preparant les données pour afficher la surface
+      shiny::req(donnees()) # Obligatoire : les données doivent etre chargées
+      shiny::req(station_selectionnee()) # Obligatoire : une station doit etre selectionnée
 
+      fun_prep_surface_bv( # Appel de la fonction
+        donnees = donnees(),
+        station_id = station_selectionnee())}) # Code de la station
+
+
+#Developpement
+    # Affichage de la surface
+    output$surface_bv <- shiny::renderUI({
+      surface_info <- surface_bv()
+      shiny::tagList(
+        shiny::p(
+          shiny::strong("Identifiant du bassin versant : "),
+          surface_info$id_bv[1]),
+        shiny::p(
+          shiny::strong("Surface du bassin versant : "),
+          paste0(round(surface_info$surface_km2[1], 2), " km²")))})
 
     # Graphique interactif de l'évolution de l'occupation du sol du bassin versant
     output$plot_occupation_bv <- plotly::renderPlotly({ # Ce qui s'affiche dans plotlyOutput(ns("plot_occupation_bv"))
@@ -132,11 +168,6 @@ mod_station_contexte_env_bv_server <- function(id, donnees, station_selectionnee
       p <- fun_plot_bv_occupation( # Appel de la fonction qui crée uniquement le graphique multicourbe
         table_long = occ$table_long ) # Utilise le tableau au format long
 
-      shiny::validate(
-        shiny::need( # Deuxième validation : si le graphique est nul ->
-          !is.null(p),
-          "Impossible de créer le graphique d'occupation du sol du bassin versant.") )
-
       plotly::ggplotly( # Transformation du ggplot en plotly pour avoir le zoom, le survol, etc.
         p, # Nom de l'object qui contient la fonction
         tooltip = "text" ) %>% # Au survol-> affiche le texte défini dans la fonction de préparation
@@ -149,7 +180,8 @@ mod_station_contexte_env_bv_server <- function(id, donnees, station_selectionnee
           displaylogo = FALSE, # Enlève le logo plotly
           toImageButtonOptions = list( # Caractéristiques du fichier exporté
             format = "png", # Export en PNG
-            filename = "evolution_occupation_sol_bassin_versant", # Nom du fichier exporté
+            filename = paste0( "evolution_occupation_sol_bv_", # Nom du fichier
+              if (!is.null(occ) && "id_bv" %in% names(occ)) occ$id_bv else "bv_inconnu"),
             height = 700, # Hauteur du fichier exporté
             width = 1100, # Largeur du fichier exporté
             scale = 1 ) ) # Résolution
@@ -231,17 +263,15 @@ mod_station_contexte_env_bv_server <- function(id, donnees, station_selectionnee
       p <- fun_plot_bv_occupation_detail( # Appel de la fonction qui crée le camembert
         table_detail = occ_detail ) # Données détaillées utilisées pour le camembert
 
-      shiny::validate(
-        shiny::need( # Deuxième validation : si le graphique est nul
-          !is.null(p),
-          "Impossible de créer le camembert du bassin versant.") )
-
       p %>% # Le graphique est déjà en plotly, donc pas besoin de ggplotly
         plotly::config( # Paramètres d'affichage et d'export
           displaylogo = FALSE, # Enlève le logo plotly
           toImageButtonOptions = list( # Caractéristiques du fichier exporté
             format = "png", # Export en PNG
-            filename = paste0("camembert_occupation_bv_", input$annee_bv_detail), # Nom du fichier selon l'année choisie
+            filename = paste0("camembert_occupation_bv_", # Nom du fichier
+              if (!is.null(occupation_bv()) && "id_bv" %in% names(occupation_bv())) occupation_bv()$id_bv else "bv_inconnu",
+              "_",
+              input$annee_bv_detail),
             height = 700, # Hauteur du fichier exporté
             width = 1100, # Largeur du fichier exporté
             scale = 1 ) ) # Résolution
@@ -311,3 +341,9 @@ mod_station_contexte_env_bv_server <- function(id, donnees, station_selectionnee
 
   } )
 }
+
+## À appeler dans l'UI
+# mod_station_contexte_env_bv_ui ("station_contexte_env_bv")
+
+## À appeler dans le server
+# mod_station_contexte_env_bv_server("station_contexte_env_bv")
