@@ -413,7 +413,48 @@ etat_bio <- bind_rows(etat_bio, ips_info) %>%
 
 #### Table pour les metriques ####
 metriques <- indices %>%
-  filter(code_indice %in% c(8058, 8056, 8057, 8054, 8050)) # On filtre pour avoir que les metriques de l'I2M2
+  filter(code_indice %in% c(8058, 8056, 8057, 8054)) # On filtre pour avoir que les metriques de l'I2M2
+
+# Il manque l'ovoviparité donc extraction sur Naiades
+ovov <- read.csv2("ovov.csv",stringsAsFactors = FALSE) # Lire ta table ovov
+ovov <- ovov |>
+  dplyr::rename( # Renommer les colonnes
+    code_station = CdStationMesureEauxSurface,
+    date_prelevement = DateDebutOperationPrelBio,
+    code_support = CdSupport,
+    libelle_support = LbSupport,
+    code_prelevement = RefOperationPrelBio,
+    resultat_indice = ResIndiceResultatBiologique,
+    code_qualification = CdRqIndiceResultatBiologique,
+    code_indice = CdParametreResultatBiologique,
+    libelle_indice = LbLongParametre) |>
+
+  dplyr::mutate( # Ajouter les colonnes manquantes
+    code_station = paste0("0", code_station), # Rajouter un 0 devant
+    date_prelevement = as.Date(date_prelevement),# Bon format pour la jointure
+    code_support = as.character(code_support),
+    code_prelevement = as.character(code_prelevement),
+    code_indice = as.numeric(code_indice),
+    resultat_indice = as.numeric(resultat_indice),
+    code_qualification = as.character(code_qualification),
+    annee = lubridate::year(date_prelevement) ) |>
+
+  dplyr::select( # Garder le même ordre de colonnes que metriques
+    code_station,
+    code_support,
+    libelle_support,
+    date_prelevement,
+    code_prelevement,
+    code_indice,
+    libelle_indice,
+    resultat_indice,
+    code_qualification,
+    annee )
+
+# Joindre
+metriques <- dplyr::bind_rows(
+  metriques,
+  ovov)
 
 #### Table occupation du sol de la station issue de QGIS####
 # Pour 2018
@@ -974,7 +1015,8 @@ acronymes_indices <- c(
   "8057" = "ASPT",
   "8056" = "Polyvoltinisme",
   "8054" = "Richesse Taxonomique",
-  "8050" = "Nombre de taxons contributifs" )
+  "8050" = "Nombre de taxons contributifs",
+  "8055" = "Ovoviparité")
 
 
 #### Enregister en rda maintenant####
