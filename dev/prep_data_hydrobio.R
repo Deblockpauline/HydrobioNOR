@@ -451,10 +451,21 @@ ovov <- ovov |>
     code_qualification,
     annee )
 
+# Joindre et mettre la clé
 # Joindre
 metriques <- dplyr::bind_rows(
   metriques,
-  ovov)
+  ovov) |>
+  dplyr::mutate(
+    code_indice = as.numeric(code_indice),
+    id_metrique = dplyr::case_when(
+      code_indice == 8054 ~ 1, # Richesse taxonomique
+      code_indice == 8055 ~ 5, # Ovoviviparité
+      code_indice == 8056 ~ 2, # Polyvoltinisme
+      code_indice == 8057 ~ 3, # ASPT
+      code_indice == 8058 ~ 4, # Shannon
+      TRUE ~ NA_real_) ) |>
+  dplyr::relocate(id_metrique, .before = code_indice)
 
 #### Table occupation du sol de la station issue de QGIS####
 # Pour 2018
