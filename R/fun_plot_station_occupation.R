@@ -16,13 +16,6 @@ fun_prep_station_occupation <- function(donnees, station_id) {
   if (is.null(donnees) || is.null(station_id) || is.na(station_id) || station_id == "") {
     return(NULL) } # On vérifie que les données existent et qu'une station est bien sélectionnée
 
-  # Harmonisation des code_station en rajoutant a 0 si il en manque 1 (sur QGIS ce n'est pas automatique)
-  station_id <- stringr::str_pad(
-    as.character(station_id),
-    width = 8,
-    side = "left", # A gauche
-    pad = "0")
-
   annees <- c("1990", "2000", "2006", "2012", "2018") # Vecteur des années CLC
 
   # Construction d'une liste de tables, une par année
@@ -33,14 +26,7 @@ fun_prep_station_occupation <- function(donnees, station_id) {
 
     # Filtrage sur la station choisie
     station_occ <- table_occ %>%
-      dplyr::mutate(
-        code_station = stringr::str_pad(
-          as.character(.data$code_station), # Harmonise les code_station = c'est une sécurité
-          width = 8,
-          side = "left",
-          pad = "0") ) %>%
       dplyr::filter(.data$code_station == station_id) # Garde la ligne de la station choisie
-
     station_occ <- station_occ[1, , drop = FALSE] # On garde uniquement la 1ere ligne
 
     # On garde uniquement les colonnes utiles et on ajoute l'année

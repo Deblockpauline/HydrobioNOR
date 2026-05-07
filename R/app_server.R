@@ -26,7 +26,6 @@ app_server <- function(input, output, session) {
     id = "uh",
     stations = shiny::reactive(donnees()$stations) ) # On transmet uniquement la table stations car la variable UH s'y trouve
 
-
   # Carte des stations dans l'onglet Station
   station_selectionnee <- mod_station_carte_server(
     id = "station_carte",
@@ -68,4 +67,10 @@ app_server <- function(input, output, session) {
     choix_departements = choix_departements,
     choix_eqb = choix_eqb,
     choix_uh = choix_uh)
+
+  #Afficher les graph des indices et des metriques
+  mod_communaute_indices_server(
+    id = "communaute_indices",
+    donnees = donnees,
+    station_selectionnee = station_selectionnee_commu )
 }

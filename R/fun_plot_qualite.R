@@ -15,22 +15,22 @@ fun_prep_qualite <- function(donnees,
   if (is.null(donnees) || is.null(donnees$etat_bio) || is.null(donnees$stations)) {return(NULL)} # Verification
   data <- donnees$etat_bio # On recupere la table
 
-  choix_eqb_etat_bio <- choix_eqb # Harmonisation du filtre EQB
-  if (!is.null(choix_eqb_etat_bio) && length(choix_eqb_etat_bio) > 0) {
-    choix_eqb_etat_bio <- dplyr::case_when( # Car les nom ne correspondait pas
+  choix_eqb_etat_bio <- choix_eqb # Harmonisation du filtre EQB, ic i on le copie
+  if (!is.null(choix_eqb_etat_bio) && length(choix_eqb_etat_bio) > 0) { # Si un EQB existe
+    choix_eqb_etat_bio <- dplyr::case_when( # Car les nom ne correspondait pas, fais la correspondances
       choix_eqb_etat_bio == "Diatomées" ~ "Diatomées benthiques",
       choix_eqb_etat_bio == "Macroinvertébrés" ~ "Macroinvertébrés aquatiques",
       choix_eqb_etat_bio == "Macrophytes" ~ "Macrophytes",
       choix_eqb_etat_bio == "Poissons" ~ "Poissons",
       choix_eqb_etat_bio == "Tous" ~ "Tous",
-      TRUE ~ choix_eqb_etat_bio ) }
+      TRUE ~ choix_eqb_etat_bio ) } # Sinon garde la valeur
 
   data <- filtrer_donnees(
     data = data, # On applique les filtres
     choix_departements = choix_departements,
     choix_eqb = choix_eqb_etat_bio)
 
-  stations_filtrees <- filtrer_stations( # On filtre l'UH dans la table stations
+  stations_filtrees <- filtrer_stations( # On filtre l'UH dans la table stations car existe pas dans etat_bio
     station = donnees$stations,
     choix_departement = choix_departements,
     choix_uh = choix_uh )
@@ -41,7 +41,7 @@ fun_prep_qualite <- function(donnees,
     dplyr::mutate(code_station = as.character(code_station))
 
   data <- data %>% # On garde uniquement les données qualité des stations retenues
-    dplyr::filter(code_station %in% stations_filtrees$code_station) # dans les 2 tables en 1
+    dplyr::filter(code_station %in% stations_filtrees$code_station) # Jointure
   if (nrow(data) == 0) {return(NULL)} # Si il reste aucune station
 
   return(data) # Retourne les données

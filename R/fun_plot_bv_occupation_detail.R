@@ -1,7 +1,7 @@
 #' Préparation des données détaillées d'occupation du sol du bv
 #'
-#' @description On part du `code_station`, on récupère le bv correspondant via `id_BV`
-#' qui est recherché dans la colonne `CdOH` de la table `occupation_BV_details_xxxx`
+#' @description On part du code_station, on récupère le bv correspondant via id_BV
+#' qui est recherché dans la colonne CdOH de la table occupation_BV_details_xxxx
 #' C'est le meme fonctionnement que fun_plot_bv_occupation sauf que ici, pas de boucle car on travaille sur 1 année
 #'
 #' @param donnees Liste contenant les objets de l'application
@@ -17,21 +17,9 @@ fun_prep_bv_occupation_detail <- function(donnees, station_id, annee) {
     return(NULL)} # Vérifie que les données existent et qu'une station est bien sélectionnée
   stations <- donnees$stations # Récupère la table stations dans un objet plus simple
 
-  # Harmonisation du code station sélectionné
-  station_id <- stringr::str_pad(
-    string = as.character(station_id), # Transforme en texte
-    width = 8, # Force un format sur 8 caractères
-    side = "left", # Rajoute les 0 à gauche
-    pad = "0" )# Caractère utilisé pour compléter
-
   # Harmonisation des identifiants dans la table stations
   stations <- stations %>%
     dplyr::mutate(
-      code_station = stringr::str_pad(
-        string = as.character(.data$code_station), # Transforme aussi les codes station en texte
-        width = 8, # Même format sur 8 caractères
-        side = "left", # Rajoute les 0 à gauche si besoin
-        pad = "0"),
       id_BV = as.character(.data$id_BV)) # Transforme id_BV en caractère pour la comparaison
 
   station_info <- stations %>%

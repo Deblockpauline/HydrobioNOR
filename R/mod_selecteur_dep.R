@@ -8,7 +8,7 @@ mod_selecteur_dep_ui <- function(id) {
   shiny::tagList( # Menu déroulant pour choisir un département
     shiny::selectInput(
       inputId = ns("departement"),
-      label = "Département",
+      label = "Département", # NOM
       choices = "Tous", # Initialisé avec tous
       selected = "Tous" ) ) } # Tous par defaut
 
@@ -21,25 +21,22 @@ mod_selecteur_dep_ui <- function(id) {
 mod_selecteur_dep_server <- function(id, donnees) {
   shiny::moduleServer(id, function(input, output, session) {
 
-    # Mise à jour de la liste des départements à partir des données
-    shiny::observe({
+    shiny::observe({  # Mise à jour de la liste des départements à partir des données
       shiny::req(donnees()) # Verifie que données existe
       shiny::req("donnee_carte" %in% names(donnees())) # Verifie que donnee_carte est present
-      df <- donnees()$donnee_carte
+      df <- donnees()$donnee_carte # Stockage
       shiny::req(!is.null(df))  # Sécurité : pas que ca soit nul et qu'on est un code_dep
-      shiny::req("code_dep" %in% names(df))
+      shiny::req("code_dep" %in% names(df)) # Presence de la colonne code_dep
 
-      # Récupération des départements uniques présents dans les données
-      liste_departements <- df |>
-        dplyr::pull(code_dep) |> # Prend la colonne
+      liste_departements <- df |>  # Récupération des départements
+        dplyr::pull(code_dep) |> # Prend la colonne code_dep
         unique() |> # Enleve les doublons
         sort() # Trie
 
-      # Mise à jour du selectInput avec les départements disponibles
-      shiny::updateSelectInput(
+      shiny::updateSelectInput( # Mise à jour du selectInput avec les départements
         session = session,
-        inputId = "departement",
-        choices = c("Tous", liste_departements),
+        inputId = "departement", # Defini dans le ui
+        choices = c("Tous", liste_departements),# Tous et ceux trouvé
         selected = "Tous")
     } )
     return(shiny::reactive(input$departement)) # Renvoie le dep séléctionné en réactive

@@ -195,18 +195,25 @@ mod_station_contexte_env_bv_server <- function(id, donnees, station_selectionnee
           !is.null(occ),
           "Aucune donnée tabulaire disponible pour le bassin versant de cette station.") )
 
-      table_affichee <- occ$table_large %>% # Préparation du tableau à afficher
+      table_affichee <- occ$table_long %>% # Permetde mettre une clé d'identif
         dplyr::mutate(
-          dplyr::across(
-            .cols = c(
-              "Artificialisation",
-              "Agriculture",
-              "Forêt",
-              "Zones humides",
-              "Eau"), # Colonnes à arrondir
-            .fns = ~ round(.x, 1) ) ) %>% # Arrondit les valeurs à 1 décimale
+          id_occupation = dplyr::case_when(
+            as.character(.data$occupation) == "Artificialisation" ~ 1,
+            as.character(.data$occupation) == "Agriculture" ~ 2,
+            as.character(.data$occupation) == "Forêt" ~ 3,
+            as.character(.data$occupation) == "Zones humides" ~ 4,
+            as.character(.data$occupation) == "Eau" ~ 5,
+            TRUE ~ NA_real_ ),
+          pourcentage = round(.data$pourcentage, 1)) %>% # Arrondir
+        dplyr::select(
+          annee,
+          id_occupation,
+          occupation,
+          pourcentage ) %>%
         dplyr::rename(
-          "Année" = .data$annee ) # Renomme la colonne annee pour l'affichage
+          "Annee" = .data$annee,
+          "Occupation" = .data$occupation,
+          "Pourcentage" = .data$pourcentage )
 
       DT::datatable( # Affichage du tableau interactif
         table_affichee,
@@ -230,23 +237,29 @@ mod_station_contexte_env_bv_server <- function(id, donnees, station_selectionnee
       # Contenu du fichier exporté
       content = function(file) { # Fonction exécutée quand l'utilisateur clique sur télécharger
         occ <- occupation_bv() # Récupération des données
-
-        table_export <- occ$table_large %>% # On récupère le tableau large (1 ligne = 1 année)
-          dplyr::mutate( # Permet de modifier plusieurs colonnes du tableau
-            dplyr::across( # Applique la même transformation sur plusieurs colonnes
-              .cols = c( # Liste des colonnes concernées
-                "Artificialisation",
-                "Agriculture",
-                "Forêt",
-                "Zones humides",
-                "Eau"),
-              .fns = ~ round(.x, 1) ) ) %>% # Arrondit toutes les valeurs à 1 décimale
+        table_export <- occ$table_long %>% # Permetde mettre une clé d'identif
+          dplyr::mutate(
+            id_occupation = dplyr::case_when(
+              as.character(.data$occupation) == "Artificialisation" ~ 1,
+              as.character(.data$occupation) == "Agriculture" ~ 2,
+              as.character(.data$occupation) == "Forêt" ~ 3,
+              as.character(.data$occupation) == "Zones humides" ~ 4,
+              as.character(.data$occupation) == "Eau" ~ 5,
+              TRUE ~ NA_real_ ),
+            pourcentage = round(.data$pourcentage, 1)) %>% # Arrondir
+          dplyr::select(
+            annee,
+            id_occupation,
+            occupation,
+            pourcentage ) %>%
           dplyr::rename(
-            "Annee" = .data$annee ) # Renomme la colonne pour le fichier exporté
+            "Annee" = .data$annee,
+            "Occupation" = .data$occupation,
+            "Pourcentage" = .data$pourcentage )
 
-        utils::write.csv( # Création du fichier csv
-          x = table_export, # Tableau à exporter
-          file = file, # Chemin du fichier créé par Shiny
+        utils::write.csv2( # Création du fichier csv
+          table_export, # Tableau à exporter
+          file, # Chemin du fichier créé par Shiny
           row.names = FALSE, # N'exporte pas les numéros de ligne
           fileEncoding = "UTF-8" ) # Encodage du fichier
       } )
@@ -286,16 +299,35 @@ mod_station_contexte_env_bv_server <- function(id, donnees, station_selectionnee
           !is.null(occ_detail),
           "Aucune donnée détaillée disponible pour cette année et ce bassin versant.") )
 
-      table_affichee <- occ_detail %>% # Préparation du tableau à afficher
-        dplyr::select(
-          .data$occupation_detail, # Colonne des catégories
-          .data$pourcentage ) %>% # Colonne des pourcentages
+      table_affichee <- occ_detail %>%
         dplyr::mutate(
-          pourcentage = round(.data$pourcentage, 1) ) %>% # Arrondit à 1 décimale
-        dplyr::rename(
-          "Occupation" = .data$occupation_detail, # Renomme pour l'affichage
-          "Pourcentage" = .data$pourcentage ) # Renomme pour l'affichage
-
+          id_occupation = dplyr::case_when(
+            stringr::str_detect(.data$occupation_detail, "Zones urbanisées") ~ 1,
+            stringr::str_detect(.data$occupation_detail, "Zones industrielles") ~ 2,
+            stringr::str_detect(.data$occupation_detail, "Terres arables") ~ 3,
+            stringr::str_detect(.data$occupation_detail, "Cultures permanentes") ~ 4,
+            stringr::str_detect(.data$occupation_detail, "Prairies") ~ 5,
+            stringr::str_detect(.data$occupation_detail, "Zones agricoles") ~ 6,
+            stringr::str_detect(.data$occupation_detail, "Forêts") ~ 7,
+            stringr::str_detect(.data$occupation_detail, "Milieux à végétation") ~ 8,
+            stringr::str_detect(.data$occupation_detail, "Espaces ouverts") ~ 9,
+            stringr::str_detect(.data$occupation_detail, "Zones humides intérieures") ~ 10,
+            stringr::str_detect(.data$occupation_detail, "Zones humides côtières") ~ 11,
+            stringr::str_detect(.data$occupation_detail, "Eaux continentales") ~ 12,
+            stringr::str_detect(.data$occupation_detail, "Eaux maritimes") ~ 13,
+            stringr::str_detect(.data$occupation_detail, "Mines") ~ 14,
+            stringr::str_detect(.data$occupation_detail, "Espaces verts") ~ 15,
+            TRUE ~ NA_real_ )  ) %>%
+        dplyr::select( # Selectionne les colonne imprtante
+          id_occupation,
+          occupation_detail,
+          pourcentage ) %>%
+        dplyr::mutate( # Arrondi
+          pourcentage = round(.data$pourcentage, 1) ) %>%
+        dplyr::rename( # Rennome pour le ficher expoté
+          "ID occupation" = .data$id_occupation,
+          "Occupation" = .data$occupation_detail,
+          "Pourcentage" = .data$pourcentage )
       DT::datatable( # Affichage du tableau interactif
         table_affichee,
         rownames = FALSE, # N'affiche pas les numéros de ligne
@@ -322,16 +354,35 @@ mod_station_contexte_env_bv_server <- function(id, donnees, station_selectionnee
 
         if (is.null(occ_detail)) { return(NULL) } # Si aucune donnée n'existe, on arrête l'export
 
-        table_export <- occ_detail %>% # Préparation du tableau à exporter
+        table_export <- occ_detail %>%
+          dplyr::mutate( # Systeme de clé
+            id_occupation = dplyr::case_when(
+              stringr::str_detect(.data$occupation_detail, "Zones urbanisées") ~ 1,
+              stringr::str_detect(.data$occupation_detail, "Zones industrielles") ~ 2,
+              stringr::str_detect(.data$occupation_detail, "Terres arables") ~ 3,
+              stringr::str_detect(.data$occupation_detail, "Cultures permanentes") ~ 4,
+              stringr::str_detect(.data$occupation_detail, "Prairies") ~ 5,
+              stringr::str_detect(.data$occupation_detail, "Zones agricoles") ~ 6,
+              stringr::str_detect(.data$occupation_detail, "Forêts") ~ 7,
+              stringr::str_detect(.data$occupation_detail, "Milieux à végétation") ~ 8,
+              stringr::str_detect(.data$occupation_detail, "Espaces ouverts") ~ 9,
+              stringr::str_detect(.data$occupation_detail, "Zones humides intérieures") ~ 10,
+              stringr::str_detect(.data$occupation_detail, "Zones humides côtières") ~ 11,
+              stringr::str_detect(.data$occupation_detail, "Eaux continentales") ~ 12,
+              stringr::str_detect(.data$occupation_detail, "Eaux maritimes") ~ 13,
+              stringr::str_detect(.data$occupation_detail, "Mines") ~ 14,
+              stringr::str_detect(.data$occupation_detail, "Espaces verts") ~ 15,
+              TRUE ~ NA_real_ ) ) %>%
           dplyr::select(
-            .data$occupation_detail, # Colonne des catégories
-            .data$pourcentage ) %>% # Colonne des pourcentages
-          dplyr::mutate(
-            pourcentage = round(.data$pourcentage, 1) ) %>% # Arrondit à 1 décimale
-          dplyr::rename(
-            "Occupation" = .data$occupation_detail, # Renomme pour le fichier exporté
-            "Pourcentage" = .data$pourcentage ) # Renomme pour le fichier exporté
-
+            id_occupation,
+            occupation_detail,
+            pourcentage ) %>%
+          dplyr::mutate( # Arrondi
+            pourcentage = round(.data$pourcentage, 1) ) %>%
+          dplyr::rename( # Rennome
+            "ID occupation" = .data$id_occupation,
+            "Occupation" = .data$occupation_detail,
+            "Pourcentage" = .data$pourcentage )
         utils::write.csv( # Création du fichier csv
           x = table_export, # Tableau à exporter
           file = file, # Chemin du fichier créé par Shiny

@@ -265,8 +265,8 @@ mod_station_carte_server <- function(id,
             "<b>", station_choisie$libelle_station, "</b><br/>",
             "Code station : ", station_choisie$code_station, "<br/>",
             "Cours d'eau : ", station_choisie$libelle_cours_eau, "<br/>",
-            "Département : ", station_choisie$code_dep ) )
-    }, ignoreNULL = TRUE) # Ne se déclenche pas au démarrage
+            "Département : ", station_choisie$code_dep ) ) },
+      ignoreNULL = TRUE) # Ne se déclenche pas au démarrage
 
     # Le module renvoie le code de la station actuellement sélectionnée
     return(shiny::reactive(station_selectionnee()))

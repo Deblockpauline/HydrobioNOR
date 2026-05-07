@@ -126,7 +126,7 @@ app_ui <- function(request) { # Fonction qui définit l'interface utilisateur
                   shiny::tabPanel(
                     title = "Indices",
                     shiny::br(),
-                    shiny::p("A venir version 4 ") ),
+                    mod_communaute_indices_ui("communaute_indices")),
 
                   # 3e sous-onglet : Taxons
                   shiny::tabPanel(

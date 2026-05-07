@@ -3,7 +3,7 @@
 #' Fonctions pour filtrer les données de l'application
 #' @noRd
 
-#' 1) Filtrer les stations selon les filtres globaux
+#' 1) Filtrer les stations selon la géographie
 #'
 #' @description
 #' Cette fonction filtre la table des stations selon  le département ou l'UH
@@ -48,7 +48,7 @@ filtrer_stations <- function(station, # Creation de la fonction
 #' Cette fonction filtre une table de données selon le départements et l'EQB sélectionnés
 #' Pas de filtre UH ici car toutes les tables ne contiennent pas cette variable
 #'
-#' @param data Table à filtrer
+#' @param data Table à filtrer ( nom générique)
 #' @param choix_departements Département sélectionné
 #' @param choix_eqb EQB sélectionné
 #' @return La table filtrée
@@ -74,19 +74,13 @@ filtrer_donnees <- function(data,
       length(choix_eqb) > 0 &&
       !("Tous" %in% choix_eqb)) {
 
-    # Cas 1 : la table possède directement une colonne "eqb"
-    if ("eqb" %in% names(data_filtree)) {
-      data_filtree <- dplyr::filter(
-        data_filtree,
-        eqb %in% choix_eqb)}
-
-    # Cas 2 : la table utilise une colonne "libelle_support"
-    else if ("libelle_support" %in% names(data_filtree)) {
+    # Cas 1 : la table utilise une colonne "libelle_support"
+    if ("libelle_support" %in% names(data_filtree)) {
       data_filtree <- dplyr::filter(
         data_filtree,
         libelle_support %in% choix_eqb)}
 
-    # Cas 3 : la table utilise une colonne "libelle_indice"
+    # Cas 2 : la table utilise une colonne "libelle_indice"
     else if ("libelle_indice" %in% names(data_filtree)) {
       data_filtree <- dplyr::filter(
         data_filtree,

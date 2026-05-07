@@ -2,9 +2,9 @@
 #'
 #' @description Cette 1ere fonction prepare les données pour le graphique et le tableau
 #' Le script est un peu plus detaillé dans les scripts pour l'occupation de la station
-#' La station sélectionnée est identifiée par son `code_station`,
-#' dans la table `stations`, on récupère son identifiant de bassin versant `id_BV`
-#' et cet identifiant est recherché dans la colonne `CdOH` des tables d'occupation
+#' La station sélectionnée est identifiée par son code_station,
+#' dans stations, on récupère son identifiant de bassin versant id_BV
+#' et cet identifiant est recherché dans la colonne CdOH des tables d'occupation
 #'
 #' @param donnees Liste contenant les objets de l'application
 #' @param station_id Code de la station sélectionnée
@@ -22,20 +22,8 @@ fun_prep_bv_occupation <- function(donnees, station_id) {
     return(NULL) }  # On vérifie que les données existent et qu'une station est bien sélectionnée
   stations <- donnees$stations # On recupere la table
 
-  # Harmonisation du code selectionné
-  station_id <- stringr::str_pad(
-    string = as.character(station_id),
-    width = 8, # On rajoute un 0 à gauche si il le faut
-    side = "left",
-    pad = "0" )
-
-  stations <- stations %>% # Harmonisation aussi
+  stations <- stations %>%
     dplyr::mutate(
-      code_station = stringr::str_pad(
-        string = as.character(.data$code_station),
-        width = 8,
-        side = "left",
-        pad = "0" ),
       id_BV = as.character(.data$id_BV) ) #Transformer en caractere car c'est l'iddentifiant
 
   # Récupération du bassin versant de la station

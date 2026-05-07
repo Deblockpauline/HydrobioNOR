@@ -84,7 +84,7 @@ mod_station_contexte_env_server <- function(id, donnees, station_selectionnee) {
     # Graphique interactif de l'évolution de l'occupation du sol
     output$plot_occupation <- plotly::renderPlotly({
       occ <- occupation_station() # Recupere les 2 tables cree dans le fun
-      shiny::validate(
+      shiny::validate( # Validation pour plus tard
         shiny::need( # Si c'est nul affiche ce message et essaie pas.
           !is.null(occ),
           "Aucune donnée d'occupation du sol disponible pour cette station.") )
@@ -126,18 +126,25 @@ mod_station_contexte_env_server <- function(id, donnees, station_selectionnee) {
           !is.null(occ),
           "Aucune donnée tabulaire disponible pour cette station." ) )
 
-      table_affichee <- occ$table_large %>% # Preparation du tableau a afficher
+      table_affichee <- occ$table_long %>% # Permetde mettre une clé d'identif
         dplyr::mutate(
-          dplyr::across(
-            .cols = c(
-              "Artificialisation",
-              "Agriculture",
-              "Forêt",
-              "Zones humides",
-              "Eau" ),
-            .fns = ~ round(.x, 1) ) ) %>%  # Arrondir
+          id_occupation = dplyr::case_when(
+            as.character(.data$occupation) == "Artificialisation" ~ 1,
+            as.character(.data$occupation) == "Agriculture" ~ 2,
+            as.character(.data$occupation) == "Forêt" ~ 3,
+            as.character(.data$occupation) == "Zones humides" ~ 4,
+            as.character(.data$occupation) == "Eau" ~ 5,
+            TRUE ~ NA_real_ ),
+          pourcentage = round(.data$pourcentage, 1)) %>% # Arrondir
+        dplyr::select(
+          annee,
+          id_occupation,
+          occupation,
+          pourcentage ) %>%
         dplyr::rename(
-          "Année" = .data$annee ) # Renomage
+          "Annee" = .data$annee,
+          "Occupation" = .data$occupation,
+          "Pourcentage" = .data$pourcentage )
 
       DT::datatable( # Affichage de tableau interactif
         table_affichee,
@@ -164,24 +171,31 @@ mod_station_contexte_env_server <- function(id, donnees, station_selectionnee) {
         occ <- occupation_station() # Recuperation des données
         if (is.null(occ)) { return(NULL)} # Si aucune donnée n'existe, on arrête l'export
 
-        table_export <- occ$table_large %>% # On récupère le tableau large (1 ligne = 1 année)
+        table_export <- occ$table_long %>% # Permetde mettre une clé d'identif
           dplyr::mutate( # Permet de modifier plusieurs colonnes du tableau
-            dplyr::across( # Applique la même transformation sur plusieurs colonnes
-              .cols = c( # Listes des colonnes concernées
-                "Artificialisation",
-                "Agriculture",
-                "Forêt",
-                "Zones humides",
-                "Eau" ),
-              .fns = ~ round(.x, 1) ) ) %>% # Arrondit toutes les valeurs de ces colonnes à 1 décimale
-          dplyr::rename( # Renomme
-            "Annee" = .data$annee )
+            id_occupation = dplyr::case_when( # Systeme de clé
+              as.character(.data$occupation) == "Artificialisation" ~ 1,
+              as.character(.data$occupation) == "Agriculture" ~ 2,
+              as.character(.data$occupation) == "Forêt" ~ 3,
+              as.character(.data$occupation) == "Zones humides" ~ 4,
+              as.character(.data$occupation) == "Eau" ~ 5,
+              TRUE ~ NA_real_ ),
+            pourcentage = round(.data$pourcentage, 1)) %>% # Arrondir
+          dplyr::select(
+            annee,
+            id_occupation,
+            occupation,
+            pourcentage ) %>%
+          dplyr::rename(
+            "Annee" = .data$annee,
+            "Occupation" = .data$occupation,
+            "Pourcentage" = .data$pourcentage )
 
-        utils::write.csv( # Création du fichier cvs
-          x = table_export,
-          file = file,
+        utils::write.csv2(
+          table_export,
+          file,
           row.names = FALSE,
-          fileEncoding = "UTF-8" )
+          fileEncoding = "UTF-8")
       } ) } )
 }
 

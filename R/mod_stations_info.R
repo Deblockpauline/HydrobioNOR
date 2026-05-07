@@ -23,22 +23,14 @@ mod_station_infos_server <- function(id, donnees, station_selectionnee) {
       shiny::req(donnees()) # Vérifie que les données sont disponibles
       code_station_sel <- station_selectionnee() # Récupère le code de la station sélectionnée
 
-      # Si aucune station n'est sélectionnée = message par défaut au debut de l'appli
       if (is.null(code_station_sel) || is.na(code_station_sel) || code_station_sel == "") {
-        return(
+        return( # Si aucune station n'est sélectionnée = message par défaut au debut de l'appli
           shiny::tagList(
             shiny::h4("Informations générales"),
             shiny::p("Cliquez sur une station de la carte pour afficher ses informations.") ) ) }
 
       stations <- NULL # Initialisation de la table des stations
-
-      # On récupère la bonne table contenant les informations station
-      if ("stations" %in% names(donnees())) {
-        stations <- donnees()$stations
-      } else if ("donnee_carte" %in% names(donnees())) {
-        stations <- donnees()$donnee_carte
-      } else if ("donnees_carte" %in% names(donnees())) {
-        stations <- donnees()$donnees_carte }
+      stations <- donnees()$stations  # On récupère la bonne table contenant les informations station
       shiny::req(stations) # Vérifie qu'une table a bien été trouvée
 
       # Filtre la ligne correspondant à la station sélectionnée
@@ -54,14 +46,11 @@ mod_station_infos_server <- function(id, donnees, station_selectionnee) {
       # Si plusieurs lignes → on garde seulement la première
       station <- station[1, , drop = FALSE]
 
-      # Fonction utilitaire :
-      # récupère une valeur de colonne si elle existe, sinon retourne "Non renseigné"
-      valeur_si_existe <- function(nom_col) {
-        if (nom_col %in% names(station)) {
+      valeur_si_existe <- function(nom_col) { # Fonction pour recupere une valeur ou mettre non rensigné
+        if (nom_col %in% names(station)) { # On verfie qu'elle existe
           valeur <- as.character(station[[nom_col]][1]) # Extraction de la valeur
-          # Gestion des NA ou valeurs vides
-          if (is.na(valeur) || valeur == "") { return("Non renseigné") }
-          return(valeur) } else { return("Non renseigné") } }
+          if (is.na(valeur) || valeur == "") { return("Non renseigné") } # Si c'est NA etc.
+          return(valeur) } else { return("Non renseigné") } } # Met non renseigné
 
       # Récupération du nom et de l'URL de la station
       nom_station <- valeur_si_existe("libelle_station")
@@ -73,8 +62,7 @@ mod_station_infos_server <- function(id, donnees, station_selectionnee) {
           href = uri_station, # Lien vers EauFrance
           target = "_blank", # Ouvre dans un nouvel onglet
           rel = "noopener noreferrer",
-          nom_station )
-      } else { nom_station } # Pas de lien
+          nom_station ) } else { nom_station } # Pas de lien
 
       # Affichage des informations générales de la station
       shiny::tagList(
