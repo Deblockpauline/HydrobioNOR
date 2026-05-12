@@ -692,11 +692,16 @@ donnee_carte_taxon <- taxons %>%
     code_station,
     libelle_station, # Regroupement
     code_support,
-    libelle_taxon) %>%
+    libelle_taxon,
+    code_appel_taxon) %>%
   summarise(
-    abondance_moyenne = mean(resultat_taxon, na.rm = TRUE),
+    abondance_moyenne = mean(resultat_taxon, na.rm = TRUE), # Moyenne de l'abondance
+    abondance_min = min(resultat_taxon, na.rm = TRUE), # Abondance minimale
+    abondance_max = max(resultat_taxon, na.rm = TRUE), # Abondance maximale
     annee_min = min(annee, na.rm = TRUE),
-    annee_max = max(annee, na.rm = TRUE), # Calcul de l'abondance, année min et max
+    annee_max = max(annee, na.rm = TRUE), # Calcul des années min et max
+    code_prelevement = paste(unique(code_prelevement), collapse = " ; "), # Regroupe les codes prélèvements
+    resultat_taxon = paste(unique(resultat_taxon), collapse = " ; "), # Regroupe les résultats taxons
     .groups = "drop" ) %>%
   mutate(
     eqb = dplyr::case_when(
@@ -705,10 +710,15 @@ donnee_carte_taxon <- taxons %>%
       code_support == "27" ~ "Macrophytes",
       code_support == "4"  ~ "Poissons",
       TRUE ~ NA_character_ ), # Associer chaque code_support à son EQB pour le filtre dans l'application
-    abondance_affichee = sub("\\.?0+$", "", sprintf("%.3f", abondance_moyenne)),
+
+    abondance_min_affichee = sub("\\.?0+$", "", sprintf("%.3f", abondance_min)), # Format abondance min
+    abondance_max_affichee = sub("\\.?0+$", "", sprintf("%.3f", abondance_max)), # Format abondance max
+
     resume = paste0(
       "abondance: ",
-      abondance_affichee,
+      abondance_min_affichee,
+      "-",
+      abondance_max_affichee,
       " (",
       annee_min,
       "-",
@@ -735,7 +745,10 @@ donnee_carte_taxon <- taxons %>%
     libelle_taxon,
     abondance_moyenne, # Selection finale
     resume,
-    hover )
+    hover,
+    code_prelevement,
+    code_appel_taxon,
+    resultat_taxon)
 
 #### Table pour le diag####
 #Construction table entree_miv_seee
