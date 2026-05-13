@@ -73,4 +73,12 @@ app_server <- function(input, output, session) {
     id = "communaute_indices",
     donnees = donnees,
     station_selectionnee = station_selectionnee_commu )
+
+  # Carte de répartition des taxons
+  mod_repartition_carte_server(
+    id = "repartition_carte",
+    donnees = donnees,
+    choix_departements = choix_departements,
+    choix_eqb = choix_eqb,
+    choix_uh = choix_uh )
 }

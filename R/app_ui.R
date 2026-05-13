@@ -145,5 +145,15 @@ app_ui <- function(request) { # Fonction qui définit l'interface utilisateur
                     title = "Plan d'échantillonnage",
                     shiny::br(),
                     shiny::p("À venir Version 7") )
-              ) ) ) ) )
-      ) ) ) }
+                ) ) ) ),
+
+          # 3e onglet : Répartition
+          shiny::tabPanel(
+            title = "Répartition",
+            shiny::br(), # Espace
+
+            shiny::fluidRow(
+              shiny::column(
+                width = 12, # Pour afficher la carte de repartion
+                mod_repartition_carte_ui("repartition_carte", hauteur = "500px") ) ) )
+        ) ) ) ) }
