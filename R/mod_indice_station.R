@@ -82,132 +82,132 @@ mod_communaute_indices_server <- function(id, donnees, station_selectionnee) { #
               shiny::hr() ) } )# Ligne separation
       ) } )
 
-        # Rendu des graphiques, tableaux et exports
-        shiny::observe({ # Observe pour creer les sorties
+    # Rendu des graphiques, tableaux et exports
+    shiny::observe({ # Observe pour creer les sorties
 
-          plots <- graphiques_indices() # Recupere les graphiques/table
-          purrr::walk( # Boucle sans creer de liste
-            seq_along(plots), # Numero de chaque indice
-            function(i) { # Pour chaque indice
+      plots <- graphiques_indices() # Recupere les graphiques/table
+      purrr::walk( # Boucle sans creer de liste
+        seq_along(plots), # Numero de chaque indice
+        function(i) { # Pour chaque indice
 
-              local({ # Evite les soucis de boucle Shiny
-                ii <- i # Garde le bon numero , evite 3 3 3 ( ecrase tout par le dernier) par exemple et garde 1 2 3
+          local({ # Evite les soucis de boucle Shiny
+            ii <- i # Garde le bon numero , evite 3 3 3 ( ecrase tout par le dernier) par exemple et garde 1 2 3
 
-                output[[paste0("plot_indice_", ii)]] <- plotly::renderPlotly({ # Rendu du graphique
-                  plots[[ii]]$graph  } )# Affiche le graphique de l'indice
+            output[[paste0("plot_indice_", ii)]] <- plotly::renderPlotly({ # Rendu du graphique
+              plots[[ii]]$graph  } )# Affiche le graphique de l'indice
 
-                output[[paste0("table_indice_", ii)]] <- DT::renderDT({ # Rendu du tableau
-                  table_affichage <- plots[[ii]]$table %>% # Table associee au graphique
-                    dplyr::mutate(
-                      dplyr::across(
-                        where(is.numeric), # Colonnes numeriques
-                        ~ round(.x, 3) ) )# Arrondi a 0.001
+            output[[paste0("table_indice_", ii)]] <- DT::renderDT({ # Rendu du tableau
+              table_affichage <- plots[[ii]]$table %>% # Table associee au graphique
+                dplyr::mutate(
+                  dplyr::across(
+                    where(is.numeric), # Colonnes numeriques
+                    ~ round(.x, 3) ) )# Arrondi a 0.001
 
-                  DT::datatable( # Cree le tableau interactif
-                    table_affichage, # Table arrondie pour affichage
-                    rownames = FALSE, # Pas de noms de lignes
-                    options = list(
-                      pageLength = 10, # 10 lignes par page
-                      scrollX = TRUE ) ) } )  # Scroll horizontal si besoin
+              DT::datatable( # Cree le tableau interactif
+                table_affichage, # Table arrondie pour affichage
+                rownames = FALSE, # Pas de noms de lignes
+                options = list(
+                  pageLength = 10, # 10 lignes par page
+                  scrollX = TRUE ) ) } , server = TRUE )  # Scroll horizontal si besoin
 
-                # Export CSV
-                output[[paste0("download_indice_", ii)]] <- shiny::downloadHandler( # Telechargement CSV
+            # Export CSV
+            output[[paste0("download_indice_", ii)]] <- shiny::downloadHandler( # Telechargement CSV
 
-                  filename = function() { # Nom du fichier
-                    nom_indice <- unique(plots[[ii]]$table$libelle_indice)[1] # Recupere le nom de l'indice
-                    paste0("donnees_indice_", nom_indice, "_", station_selectionnee(), ".csv") },  # Nom final
+              filename = function() { # Nom du fichier
+                nom_indice <- unique(plots[[ii]]$table$libelle_indice)[1] # Recupere le nom de l'indice
+                paste0("donnees_indice_", nom_indice, "_", station_selectionnee(), ".csv") },  # Nom final
 
-                  content = function(file) { # Contenu du fichier
-                    table_export <- plots[[ii]]$table %>% # Table a exporter
-                      dplyr::mutate(
-                        dplyr::across(
-                          where(is.numeric), # Colonnes numeriques
-                          ~ round(.x, 3) ) ) # Arrondi a 0.001
-                    utils::write.csv2( # Ecrit le CSV
-                      table_export, # Table arrondie exportee
-                      file, # Chemin du fichier
-                      row.names = FALSE,
-                      fileEncoding = "UTF-8") } # Pas de noms de lignes
-                ) } ) } )
-        } )
+              content = function(file) { # Contenu du fichier
+                table_export <- plots[[ii]]$table %>% # Table a exporter
+                  dplyr::mutate(
+                    dplyr::across(
+                      where(is.numeric), # Colonnes numeriques
+                      ~ round(.x, 3) ) ) # Arrondi a 0.001
+                utils::write.csv2( # Ecrit le CSV
+                  table_export, # Table arrondie exportee
+                  file, # Chemin du fichier
+                  row.names = FALSE,
+                  fileEncoding = "UTF-8") } # Pas de noms de lignes
+            ) } ) } )
+    } )
 
-#### PARTIE I2M2 METRIQUES
+    #### PARTIE I2M2 METRIQUES
 
-        # Bloc dynamique des métriques I2M2
-        output$bloc_metriques_i2m2 <- shiny::renderUI({ # Affiche ou non la partie metriques
-          shiny::req(donnees()) # Attend les donnees
-          table_metriques <- donnees()$metriques %>%
-            dplyr::filter(code_station == station_selectionnee())
+    # Bloc dynamique des métriques I2M2
+    output$bloc_metriques_i2m2 <- shiny::renderUI({ # Affiche ou non la partie metriques
+      shiny::req(donnees()) # Attend les donnees
+      table_metriques <- donnees()$metriques %>%
+        dplyr::filter(code_station == station_selectionnee())
 
-          if (nrow(table_metriques) == 0) { # Si pas de lignes
-            return(
-              shiny::div(
-                style = "color: #666; font-style: italic;",
-                "Aucune donnée de métrique I2M2 disponible pour cette station.") ) }
+      if (nrow(table_metriques) == 0) { # Si pas de lignes
+        return(
+          shiny::div(
+            style = "color: #666; font-style: italic;",
+            "Aucune donnée de métrique I2M2 disponible pour cette station.") ) }
 
-          shiny::tagList( # Si donnees OK, on affiche les sorties
-            plotly::plotlyOutput(
-              outputId = ns("plot_metriques_i2m2"),
-              height = "450px"),
+      shiny::tagList( # Si donnees OK, on affiche les sorties
+        plotly::plotlyOutput(
+          outputId = ns("plot_metriques_i2m2"),
+          height = "450px"),
 
-            shiny::br(),
-            shiny::downloadButton(
-              outputId = ns("download_metriques_i2m2"),
-              label = "Télécharger les métriques (.csv)"),
+        shiny::br(),
+        shiny::downloadButton(
+          outputId = ns("download_metriques_i2m2"),
+          label = "Télécharger les métriques (.csv)"),
 
-            shiny::br(),
-            DT::DTOutput(
-              outputId = ns("table_metriques_i2m2") ) ) } )
+        shiny::br(),
+        DT::DTOutput(
+          outputId = ns("table_metriques_i2m2") ) ) } )
 
-        # Graphique
-        output$plot_metriques_i2m2 <- plotly::renderPlotly({
-          shiny::req(donnees()) # Obligatoire
-          shiny::req(station_selectionnee())
-          graph <- fun_plot_metriques_i2m2( # Recupere la fonction
-            metriques = donnees()$metriques,
-            station_id = station_selectionnee())
-          shiny::req(graph) # Bloque si null
-          graph } )
+    # Graphique
+    output$plot_metriques_i2m2 <- plotly::renderPlotly({
+      shiny::req(donnees()) # Obligatoire
+      shiny::req(station_selectionnee())
+      graph <- fun_plot_metriques_i2m2( # Recupere la fonction
+        metriques = donnees()$metriques,
+        station_id = station_selectionnee())
+      shiny::req(graph) # Bloque si null
+      graph } )
 
-         # Tableau des métriques I2M2
-          output$table_metriques_i2m2 <- DT::renderDT({ # Rendu tableau metriques
-            shiny::req(donnees()) # Attend les donnees
-            shiny::req(station_selectionnee()) # Attend une station
-            table_metriques <- donnees()$metriques %>% # Table metriques
-              dplyr::filter(code_station == station_selectionnee()) # Station choisie
+    # Tableau des métriques I2M2
+    output$table_metriques_i2m2 <- DT::renderDT({ # Rendu tableau metriques
+      shiny::req(donnees()) # Attend les donnees
+      shiny::req(station_selectionnee()) # Attend une station
+      table_metriques <- donnees()$metriques %>% # Table metriques
+        dplyr::filter(code_station == station_selectionnee()) # Station choisie
 
-            shiny::req(nrow(table_metriques) > 0) # Bloque le tableau si aucune ligne
-            table_metriques <- table_metriques %>% # Reprend la table filtree
-              dplyr::mutate(
-                dplyr::across(
-                  where(is.numeric), # Colonnes numeriques
-                  ~ round(.x, 3) ) ) # Arrondi
+      shiny::req(nrow(table_metriques) > 0) # Bloque le tableau si aucune ligne
+      table_metriques <- table_metriques %>% # Reprend la table filtree
+        dplyr::mutate(
+          dplyr::across(
+            where(is.numeric), # Colonnes numeriques
+            ~ round(.x, 3) ) ) # Arrondi
 
-            DT::datatable(
-              table_metriques, # Table affichee
-              rownames = FALSE, # Pas de noms de lignes
-              options = list(
-                pageLength = 10, # 10 lignes par page
-                scrollX = TRUE ) ) } ) # Scroll horizontal
+      DT::datatable(
+        table_metriques, # Table affichee
+        rownames = FALSE, # Pas de noms de lignes
+        options = list(
+          pageLength = 10, # 10 lignes par page
+          scrollX = TRUE ) ) }, server = TRUE ) # Scroll horizontal
 
-        # Export CSV des métriques I2M2
-        output$download_metriques_i2m2 <- shiny::downloadHandler(
-          filename = function() { # Nom du fichier
-            paste0("metriques_I2M2_", station_selectionnee(), ".csv") },
-          content = function(file) { # Contenu du fichier
-            table_export <- donnees()$metriques %>%
-              dplyr::filter(code_station == station_selectionnee()) %>%
-              dplyr::mutate(
-                dplyr::across(
-                  where(is.numeric),
-                  ~ round(.x, 3) ) ) %>%
-              dplyr::relocate(id_metrique, .before = code_indice)
-            utils::write.csv2(
-              table_export,
-              file,
-              row.names = FALSE,
-              fileEncoding = "UTF-8") } )
-      } ) }
+    # Export CSV des métriques I2M2
+    output$download_metriques_i2m2 <- shiny::downloadHandler(
+      filename = function() { # Nom du fichier
+        paste0("metriques_I2M2_", station_selectionnee(), ".csv") },
+      content = function(file) { # Contenu du fichier
+        table_export <- donnees()$metriques %>%
+          dplyr::filter(code_station == station_selectionnee()) %>%
+          dplyr::mutate(
+            dplyr::across(
+              where(is.numeric),
+              ~ round(.x, 3) ) ) %>%
+          dplyr::relocate(id_metrique, .before = code_indice)
+        utils::write.csv2(
+          table_export,
+          file,
+          row.names = FALSE,
+          fileEncoding = "UTF-8") } )
+  } ) }
 
 ## À appeler dans l'UI
 # mod_station_carte_ui("communaute_indices")

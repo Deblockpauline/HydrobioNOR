@@ -31,7 +31,7 @@ app_ui <- function(request) { # Fonction qui définit l'interface utilisateur
     shiny::fluidRow(
       shiny::column(
         width = 10,
-        shiny::titlePanel("HydrobioNOR") ), # Le titre
+        shiny::titlePanel("Suivi hydrobiologique en Normandie") ), # Le titre
       shiny::column(
         width = 2, # Largeur
         shiny::tags$img(
@@ -132,7 +132,7 @@ app_ui <- function(request) { # Fonction qui définit l'interface utilisateur
                   shiny::tabPanel(
                     title = "Taxons",
                     shiny::br(),
-                    shiny::p("À venir, Version 5") ),
+                    mod_communaute_taxons_ui("taxons") ),
 
                   # 4e sous-onglet : Diagnostic
                   shiny::tabPanel(
@@ -151,7 +151,6 @@ app_ui <- function(request) { # Fonction qui définit l'interface utilisateur
           shiny::tabPanel(
             title = "Répartition",
             shiny::br(), # Espace
-
             shiny::fluidRow(
               shiny::column(
                 width = 12, # Pour afficher la carte de repartion

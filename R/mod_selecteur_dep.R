@@ -8,14 +8,14 @@ mod_selecteur_dep_ui <- function(id) {
   shiny::tagList( # Menu déroulant pour choisir un département
     shiny::selectInput(
       inputId = ns("departement"),
-      label = "Département", # NOM
+      label = "Département", # Nom
       choices = "Tous", # Initialisé avec tous
       selected = "Tous" ) ) } # Tous par defaut
 
 #' Module server du sélecteur de département
 #'
 #' @param id Identifiant du module
-#' @param donnees Reactive contenant la liste renvoyée par mod_load_data_server()
+#' @param donnees Reactive contenant les données
 #' @noRd
 
 mod_selecteur_dep_server <- function(id, donnees) {

@@ -154,7 +154,7 @@ mod_station_contexte_env_server <- function(id, donnees, station_selectionnee) {
           scrollX = TRUE,
           searching = FALSE,
           lengthChange = FALSE ) )
-    })
+    }, server = TRUE)
 
     # Export du tableau récapitulatif au format .csv
     output$download_table_occupation <- shiny::downloadHandler(

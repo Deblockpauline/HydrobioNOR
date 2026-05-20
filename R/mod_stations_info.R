@@ -29,7 +29,6 @@ mod_station_infos_server <- function(id, donnees, station_selectionnee) {
             shiny::h4("Informations générales"),
             shiny::p("Cliquez sur une station de la carte pour afficher ses informations.") ) ) }
 
-      stations <- NULL # Initialisation de la table des stations
       stations <- donnees()$stations  # On récupère la bonne table contenant les informations station
       shiny::req(stations) # Vérifie qu'une table a bien été trouvée
 
@@ -46,11 +45,11 @@ mod_station_infos_server <- function(id, donnees, station_selectionnee) {
       # Si plusieurs lignes → on garde seulement la première
       station <- station[1, , drop = FALSE]
 
-      valeur_si_existe <- function(nom_col) { # Fonction pour recupere une valeur ou mettre non rensigné
+      valeur_si_existe <- function(nom_col) { # Fonction interne qui recupere une valeur ou met non rensigné
         if (nom_col %in% names(station)) { # On verfie qu'elle existe
           valeur <- as.character(station[[nom_col]][1]) # Extraction de la valeur
           if (is.na(valeur) || valeur == "") { return("Non renseigné") } # Si c'est NA etc.
-          return(valeur) } else { return("Non renseigné") } } # Met non renseigné
+          return(valeur) } else { return("Non renseigné") } } # = Non renseigné
 
       # Récupération du nom et de l'URL de la station
       nom_station <- valeur_si_existe("libelle_station")

@@ -57,7 +57,7 @@ mod_station_contexte_env_bv_ui <- function(id) {
       style = "width: 40%;", # Prend 40% de la largeur
       shiny::selectInput(
         inputId = ns("annee_bv_detail"), # Input qui servira a choisir l'année du camembert
-        label = "Choisir une année", ,# Texte afficher
+        label = "Choisir une année", # Texte afficher
         choices = c("1990", "2000", "2006", "2012", "2018"), #Années possible
         selected = "2018" ) ), #Par defaut
     shiny::br(),
@@ -223,7 +223,7 @@ mod_station_contexte_env_bv_server <- function(id, donnees, station_selectionnee
           scrollX = TRUE, # Autorise le scroll horizontal
           searching = FALSE, # Enlève la barre de recherche
           lengthChange = FALSE ) ) # Empêche de changer le nombre de lignes
-    })
+    }, server = TRUE)
 
     # Export du tableau récapitulatif au format .csv
     output$download_table_occupation_bv <- shiny::downloadHandler(
@@ -336,7 +336,7 @@ mod_station_contexte_env_bv_server <- function(id, donnees, station_selectionnee
           scrollX = TRUE, # Autorise le scroll horizontal
           searching = FALSE, # Enlève la barre de recherche
           lengthChange = FALSE ) ) # Empêche de changer le nombre de lignes
-    })
+    }, server = TRUE)
 
     # Export du tableau détaillé du camembert au format .csv
     output$download_table_occupation_bv_detail <- shiny::downloadHandler(
@@ -383,9 +383,9 @@ mod_station_contexte_env_bv_server <- function(id, donnees, station_selectionnee
             "ID occupation" = .data$id_occupation,
             "Occupation" = .data$occupation_detail,
             "Pourcentage" = .data$pourcentage )
-        utils::write.csv( # Création du fichier csv
-          x = table_export, # Tableau à exporter
-          file = file, # Chemin du fichier créé par Shiny
+        utils::write.csv2( # Création du fichier csv
+          table_export, # Tableau à exporter
+          file, # Chemin du fichier créé par Shiny
           row.names = FALSE, # N'exporte pas les numéros de ligne
           fileEncoding = "UTF-8" ) # Encodage du fichier
       } )

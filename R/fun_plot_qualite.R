@@ -7,45 +7,69 @@
 #' @return Un tableau filtré contenant les données de qualité
 #' @noRd
 
-fun_prep_qualite <- function(donnees,
+fun_prep_qualite <- function(donnees, # Liste contenant les tables de l'application
                              choix_departements = NULL,
                              choix_eqb = NULL,
                              choix_uh = NULL) {
 
-  if (is.null(donnees) || is.null(donnees$etat_bio) || is.null(donnees$stations)) {return(NULL)} # Verification
-  data <- donnees$etat_bio # On recupere la table
+  # Vérifie que les données nécessaires existent
+  if (is.null(donnees) || # Vérifie la liste globale
+      is.null(donnees$etat_bio) || # Vérifie la table qualité
+      is.null(donnees$stations)) { # Vérifie la table stations
+    return(NULL) } # Arrête la fonction si une table manque
 
-  choix_eqb_etat_bio <- choix_eqb # Harmonisation du filtre EQB, ic i on le copie
-  if (!is.null(choix_eqb_etat_bio) && length(choix_eqb_etat_bio) > 0) { # Si un EQB existe
-    choix_eqb_etat_bio <- dplyr::case_when( # Car les nom ne correspondait pas, fais la correspondances
-      choix_eqb_etat_bio == "Diatomées" ~ "Diatomées benthiques",
-      choix_eqb_etat_bio == "Macroinvertébrés" ~ "Macroinvertébrés aquatiques",
-      choix_eqb_etat_bio == "Macrophytes" ~ "Macrophytes",
-      choix_eqb_etat_bio == "Poissons" ~ "Poissons",
-      choix_eqb_etat_bio == "Tous" ~ "Tous",
-      TRUE ~ choix_eqb_etat_bio ) } # Sinon garde la valeur
+  data <- donnees$etat_bio # Récupère la table qualité écologique
+  choix_eqb_etat_bio <- choix_eqb # Copie du filtre EQB ( car probleme)
 
+  # Vérifie qu'un EQB a été sélectionné
+  if (!is.null(choix_eqb_etat_bio) && # Vérifie que le filtre existe
+      length(choix_eqb_etat_bio) > 0) { # Vérifie qu'il contient une valeur
+
+    choix_eqb_etat_bio <- dplyr::case_when( # Harmonise les noms des compartiments
+      choix_eqb_etat_bio == "Diatomées" ~ "Diatomées benthiques", # Correspondance diatomées
+      choix_eqb_etat_bio == "Macroinvertébrés" ~ "Macroinvertébrés aquatiques", # Correspondance invertébrés
+      choix_eqb_etat_bio == "Macrophytes" ~ "Macrophytes", # Correspondance macrophytes
+      choix_eqb_etat_bio == "Poissons" ~ "Poissons", # Correspondance poissons
+      choix_eqb_etat_bio == "Tous" ~ "Tous", # Cas sans filtre
+      TRUE ~ choix_eqb_etat_bio) } # Sinon conserve la valeur
+
+  # Application des filtres département + EQB
   data <- filtrer_donnees(
-    data = data, # On applique les filtres
-    choix_departements = choix_departements,
-    choix_eqb = choix_eqb_etat_bio)
+    data = data, # Table à filtrer
+    choix_departements = choix_departements, # Département sélectionné
+    choix_eqb = choix_eqb_etat_bio) # EQB harmonisé
 
-  stations_filtrees <- filtrer_stations( # On filtre l'UH dans la table stations car existe pas dans etat_bio
-    station = donnees$stations,
-    choix_departement = choix_departements,
-    choix_uh = choix_uh )
+  # Sécurité : si le filtre renvoie NULL
+  if (is.null(data)) {data <- donnees$etat_bio} # Reprend la table complète
 
-  data <- data %>%  # On harmonise le type de code_station
-    dplyr::mutate(code_station = as.character(code_station))
+  # Filtrage géographique des stations
+  stations_filtrees <- filtrer_stations(
+    station = donnees$stations, # Table stations
+    choix_departement = choix_departements, # Département sélectionné
+    choix_uh = choix_uh) # UH sélectionnée
+
+  # Sécurité : si aucun filtre station valide
+  if (is.null(stations_filtrees)) {stations_filtrees <- donnees$stations} # Reprend toutes les stations
+
+  # Harmonise le type de code_station
+  data <- data %>%
+    dplyr::mutate(
+      code_station = as.character(.data$code_station)) # Conversion caractère
+
+  # Harmonise aussi dans la table stations
   stations_filtrees <- stations_filtrees %>%
-    dplyr::mutate(code_station = as.character(code_station))
+    dplyr::mutate(
+      code_station = as.character(.data$code_station)) # Conversion caractère
 
-  data <- data %>% # On garde uniquement les données qualité des stations retenues
-    dplyr::filter(code_station %in% stations_filtrees$code_station) # Jointure
-  if (nrow(data) == 0) {return(NULL)} # Si il reste aucune station
+  # Garde uniquement les stations retenues
+  data <- data %>%
+    dplyr::filter(
+      .data$code_station %in% stations_filtrees$code_station )# Jointure par code station
 
-  return(data) # Retourne les données
-}
+  # Vérifie qu'il reste des données
+  if (nrow(data) == 0) {return(NULL)} # Arrête si aucune ligne restante
+  return(data)} # Retourne la table filtrée finale
+
 
 #' Fonction de tracé des histogrammes de qualité
 #'

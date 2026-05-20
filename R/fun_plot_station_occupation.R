@@ -27,6 +27,7 @@ fun_prep_station_occupation <- function(donnees, station_id) {
     # Filtrage sur la station choisie
     station_occ <- table_occ %>%
       dplyr::filter(.data$code_station == station_id) # Garde la ligne de la station choisie
+    if (nrow(station_occ) == 0) {return(NULL)} # Si pas de ligne correspondant
     station_occ <- station_occ[1, , drop = FALSE] # On garde uniquement la 1ere ligne
 
     # On garde uniquement les colonnes utiles et on ajoute l'année
@@ -41,6 +42,7 @@ fun_prep_station_occupation <- function(donnees, station_id) {
     }) # Fin de la boucle
 
   table_large <- dplyr::bind_rows(liste_tables)  # Assemblage de tous en un seul tableau
+  if (nrow(table_large) == 0) {return(NULL)} # Sécurité si c'est vide
 
   # Transformation du tableau large en format long pour le graphique
   table_long <- table_large %>%

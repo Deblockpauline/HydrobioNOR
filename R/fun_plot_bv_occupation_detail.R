@@ -28,6 +28,7 @@ fun_prep_bv_occupation_detail <- function(donnees, station_id, annee) {
   # Récupération de l'identifiant du bassin versant
   id_bv <- station_info$id_BV[1] # On prend le 1er identifiant de BV trouvé
   nom_table <- paste0("occupation_BV_details_", annee) # Construit le nom de la table selon l'année choisie
+  if (!nom_table %in% names(donnees)) {return(NULL)}
   table_occ <- donnees[[nom_table]] # Récupère la table d'occupation détaillée de l'année choisie
 
   # Harmonisation de CdOH
@@ -37,6 +38,7 @@ fun_prep_bv_occupation_detail <- function(donnees, station_id, annee) {
 
   bv_occ <- table_occ %>%
     dplyr::filter(.data$CdOH == id_bv) # Garde uniquement la ligne du BV correspondant à la station
+  if (nrow(bv_occ) == 0) {return(NULL) }
   bv_occ <- bv_occ[1, , drop = FALSE] # Sécurité : on garde la 1ere ligne et on reste en tableau
 
   # Transformation du format large au format long = colonne d'occupation -> ligne

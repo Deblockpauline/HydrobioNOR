@@ -24,7 +24,8 @@ app_server <- function(input, output, session) {
   # Sélecteur UH
   choix_uh <- mod_selecteur_UH_server(
     id = "uh",
-    stations = shiny::reactive(donnees()$stations) ) # On transmet uniquement la table stations car la variable UH s'y trouve
+    stations = shiny::reactive(donnees()$stations), # On transmet uniquement la table stations car la variable UH s'y trouve
+    choix_departements = choix_departements ) # Reactive contenant les départements sélectionnés
 
   # Carte des stations dans l'onglet Station
   station_selectionnee <- mod_station_carte_server(
@@ -73,6 +74,12 @@ app_server <- function(input, output, session) {
     id = "communaute_indices",
     donnees = donnees,
     station_selectionnee = station_selectionnee_commu )
+
+  # Afficher le graph des taxons par station
+  mod_communaute_taxons_server(
+    id = "taxons",
+    donnees = donnees,
+    station_selectionnee = station_selectionnee_commu)
 
   # Carte de répartition des taxons
   mod_repartition_carte_server(

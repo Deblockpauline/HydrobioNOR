@@ -26,8 +26,12 @@ mod_repartition_carte_ui <- function(id, hauteur = "700px") { # Fonction UI du m
       height = "350px" ), # Hauteur du graphique
     shiny::br(), # Espace
     shiny::h4("Tableau des prélèvements"), # Titre du tableau
-    DT::DTOutput( # Emplacement du tableau
-      outputId = ns("table_repartition_taxon") ) ) # Tableau des données sources
+    shiny::downloadButton( # Bouton export CSV
+      outputId = ns("download_repartition_taxon"),
+      label = "Télécharger les données (.csv)" ), # texte dans le bouton
+    shiny::br(), # Espace
+    DT::DTOutput(
+      outputId = ns("table_repartition_taxon") ) ) # Tableau des données
 }
 
 #' Carte de répartition des taxons server
@@ -217,6 +221,12 @@ mod_repartition_carte_server <- function(id,
           geometry = geom_df[id_ligne] ) |> # Géométrie de la station
         sf::st_as_sf(crs = crs_df) # Recrée un objet sf
 
+      # Pour la grandeur des cercles
+      max_abondance <- 1000 # Valeur max fixe
+      df <- df |> # Ajoute le rayon des cercles
+        dplyr::mutate(
+          rayon_cercle = 5 + (sqrt(abondance_totale) / sqrt(max_abondance)) * 20) # Permet de pas avoir de trop grand cercle
+
       coords <- sf::st_coordinates(df) # Coordonnées des stations
       centre_lng <- mean(coords[, 1], na.rm = TRUE) # Longitude moyenne
       centre_lat <- mean(coords[, 2], na.rm = TRUE) # Latitude moyenne
@@ -231,7 +241,7 @@ mod_repartition_carte_server <- function(id,
           zoom = 8 ) %>% # Zoom régional
         leaflet::addCircleMarkers( # Ajoute les stations
           data = df, # Données agrégées
-          radius = ~pmax(4, pmin(abondance_totale / 5, 25)), # Taille selon abondance totale
+          radius = ~rayon_cercle, # Taille proportionnelle à l'abondance totale
           stroke = TRUE, # Contour du cercle
           color = "black", # Couleur du contour
           weight = 1, # Épaisseur du contour
@@ -249,6 +259,8 @@ mod_repartition_carte_server <- function(id,
             "<b>", libelle_station, "</b><br/>", # Nom station
             "Code station : ", code_station, "<br/>", # Code station
             "Nombre de taxons sélectionnés présents : ", nb_taxons, "<br/>", # Nombre de taxons
+            "Abondance totale : ", abondance_totale, "<br/>",
+            "Rayon affiché : ", round(rayon_cercle, 1), "<br/>",
             "EQB : ", eqb, "<br/>", # EQB
             "<br/><b>Taxons :</b><br/>", taxons_resume ) ) # Taxons + résumé
     } )
@@ -266,40 +278,35 @@ mod_repartition_carte_server <- function(id,
         shiny::need(!is.null(plot), "Aucune donnée disponible pour ce ou ces taxons.") ) # Message
       plot } ) # Affiche le graphique
 
-    ## Tableau des prélèvements selon les taxons choisis
+#Tableau des prélèvements selon les taxons choisis
     output$table_repartition_taxon <- DT::renderDT({ # Création du tableau
       shiny::req(input$taxon_selectionne) # Attend au moins un taxon sélectionné
-      df_table <- taxons_export() # Récupère les lignes sources dans taxons
-
+      df_table <- taxons_export() # Récupère les lignes dans taxons
       DT::datatable( # Tableau interactif
         df_table, # Données affichées
         rownames = FALSE, # Pas de noms de lignes
-        extensions = "Buttons", # Ajoute les boutons export
-        options = list( # Options du tableau
-          dom = "Bfrtip", # Bouton + recherche + tableau
-          buttons = list( # Liste des boutons
-            list(
-              extend = "csv", # Export CSV
-              text = "Télécharger le tableau (.csv)", # Texte du bouton
-              exportOptions = list( # Options de l'export
-                modifier = list(page = "all") ), # Exporte toutes les pages du tableau
-
-              filename = DT::JS( # Nom automatique du fichier
-                paste0( # Assemble
-                  "function() {", # Debut de la fonction
-                  "var taxons = $('#", session$ns("taxon_selectionne"), "').val();", # Recupere les taxons selectionnes dans le selectizeInput
-                  "if (taxons === null || taxons.length === 0) {", # Vérifie si aucun taxon n'est selectionne
-                 "return 'repartition_taxons';", # Nom par defaut si aucun taxon choisi
-                  "}", # Fin du if
-                  "taxons = taxons.join('_')",# Transforme le vecteur en texte separe par "_"
-                  ".replace(/[^a-zA-Z0-9]/g, '_')",  # Remplace les caracteres speciaux par "_"
-                  ".replace(/_+/g, '_')", # Evite plusieurs "_" consecutifs
-                  ".replace(/^_|_$/g, '');", # Supprime "_" au debut ou a la fin
-                  "return 'repartition_' + taxons;", # Nom final du fichier export
-                  "}" # Fin de la fonction
-               ) ) )),
+        options = list(
           pageLength = 10, # Nombre de lignes affichées
           scrollX = TRUE ) ) # Scroll horizontal
-    }, server = FALSE ) # Permet d'exporter tout le tableau et pas seulement la page affichée
+    }, server = TRUE ) # Permet d'afficher toutes les lignes correctement
 
+# Export CSV du tableau des prélèvements
+    output$download_repartition_taxon <- shiny::downloadHandler( # Téléchargement CSV
+      filename = function() { # Nom automatique du fichier
+        taxons <- input$taxon_selectionne # Taxons sélectionnés
+        if (is.null(taxons) || length(taxons) == 0) { # Si aucun taxon
+          return("repartition_taxons.csv")}
+        taxons <- paste(taxons, collapse = "_") # Assemble les taxons
+        paste0( # Nom final
+          "repartition_",
+          taxons,
+          ".csv" )},
+
+      content = function(file) { # Contenu du fichier
+        table_export <- taxons_export() # Table exportée
+        utils::write.csv2(
+          table_export,
+          file,
+          row.names = FALSE,
+          fileEncoding = "UTF-8") } )
   } ) }
