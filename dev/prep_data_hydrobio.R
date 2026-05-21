@@ -15,7 +15,7 @@ library(SEEEapi) #Permet de calculer les indices et le diag
 # Stations
 stations <- get_hydrobio_stations_hydrobio(code_region = "28") %>%
   distinct(code_station_hydrobio, .keep_all = TRUE) # Sert a gardrer 1 ligne par station
-codes <- stations$code_station_hydrobio # Extraction des codes stations pour la suite
+codes <- stations$code_station # Extraction des codes stations pour la suite
 
 # Fonction qui permet la sécurité
 safe_get <- function(fun, ..., sleep = 0.2) { # Permet de faire des pauses de 0.2 secondes
@@ -204,7 +204,9 @@ taxons <- taxons %>%
     libelle_taxon= libelle_appel_taxon,
     resultat_taxon,
     code_phase= code_lot,
-    code_remarque= code_type_resultat ) %>%
+    code_remarque= code_type_resultat,
+    code_qualification,
+    libelle_qualification) %>%
   dplyr::mutate(date_prelevement = as.Date(date_prelevement)) %>% # Mettre au bon format l'année
   dplyr::group_by(code_prelevement) %>%
   dplyr::mutate(abondance_relative = resultat_taxon / sum(resultat_taxon, na.rm = TRUE)) %>%
@@ -213,6 +215,7 @@ taxons <- taxons %>%
 #Garder seulement ceux qui nous interresse
 taxons <- taxons %>%
   dplyr::filter(code_station %in% stations$code_station)
+
 #### Mettre en forme indice#####
 indices <- indices %>%
   dplyr::select(
@@ -248,13 +251,10 @@ stations_valides <- stations %>%
   sf::st_drop_geometry() %>% # On enlève la géométrie (inutile ici)
   dplyr::transmute(
     code_station = as.character(code_station),
-    typologie = stringr::str_trim(as.character(typologie)))%>% # Nettoyage des espaces
+    typologie = stringr::str_trim(as.character(typologie))) %>% # Nettoyage des espaces
   dplyr::filter(!is.na(typologie), typologie != "") # On enlève les stations sans typologie
 
-# Codes d'indices:
-# 1022 = IPS ; 5856 = IBD
-# 7613 = I2M2 ; 5910 = IBG équivalent
-# 7036 = IPR ; 2928 = IBMR
+# Codes d'indices (pas les métriques ici)
 codes_etat_bio <- c(1022, 5856, 7613, 5910, 7036, 2928)
 
 # Création de la table d'indices utile pour l'état bio
@@ -262,6 +262,8 @@ indices_etat_bio <- indices %>%
   dplyr::filter(code_indice %in% codes_etat_bio) %>%
   dplyr::inner_join(stations_valides, by = "code_station") %>%
   dplyr::mutate(
+    code_qualification = as.character(code_qualification),
+    libelle_qualification = as.character(libelle_qualification),
     libelle_indice = dplyr::case_when(
       code_indice == 5856 ~ "IBD",
       code_indice == 7613 ~ "I2M2",
@@ -270,6 +272,28 @@ indices_etat_bio <- indices %>%
       code_indice == 2928 ~ "IBMR",
       code_indice == 1022 ~ "IPS",
       TRUE ~ libelle_indice ) )
+
+# Table de qualification par station / année / indice -> evite les doublons au moment du left_join
+qualif_indices <- indices_etat_bio %>%
+  dplyr::mutate(
+    annee = lubridate::year(as.Date(date_prelevement))) %>%
+  dplyr::arrange(
+    code_station,
+    annee,
+    code_indice,
+    code_qualification) %>%
+  dplyr::group_by(
+    code_station,
+    annee,
+    code_indice) %>%
+  dplyr::slice(1) %>% # 1 qualification gardée par station / année / indice
+  dplyr::ungroup() %>%
+  dplyr::select(
+    code_station,
+    annee,
+    code_indice,
+    code_qualification,
+    libelle_qualification)
 
 # Préparation des stations pour SEEE
 stations_seee <- indices_etat_bio %>%
@@ -379,7 +403,10 @@ etat_bio <- dplyr::bind_rows(etat_2018, etat_2015) %>%
   dplyr::left_join(
     indices_etat_bio %>%
       dplyr::distinct(code_indice, code_support, libelle_support),
-    by = "code_indice") %>%
+    by = "code_indice" ) %>%
+  dplyr::left_join(
+    qualif_indices,
+    by = c("code_station", "annee", "code_indice") ) %>%
   dplyr::mutate(
     libelle_indice = dplyr::case_when(
       code_indice == 5856 ~ "IBD",
@@ -393,8 +420,8 @@ etat_bio <- dplyr::bind_rows(etat_2018, etat_2015) %>%
 
 # On prend seulement l'IPS
 ips_info <- indices_etat_bio %>%
-  filter(code_indice == 1022) %>%
-  transmute(
+  dplyr::filter(code_indice == 1022) %>%
+  dplyr::transmute(
     code_station    = as.character(code_station),
     annee           = lubridate::year(as.Date(date_prelevement)),
     code_indice     = 1022,
@@ -403,13 +430,15 @@ ips_info <- indices_etat_bio %>%
     eqr_indice      = NA_real_,
     classe_indice   = NA_character_,
     code_support,
-    libelle_support) %>%
-  distinct()
+    libelle_support,
+    code_qualification,
+    libelle_qualification) %>%
+  dplyr::distinct()
 
 # Ajout de l'IPS dans la table finale
-etat_bio <- bind_rows(etat_bio, ips_info) %>%
-  distinct() %>%
-  arrange(code_station, annee, code_indice)
+etat_bio <- dplyr::bind_rows(etat_bio, ips_info) %>%
+  dplyr::distinct() %>%
+  dplyr::arrange(code_station, annee, code_indice)
 
 #### Table pour les metriques ####
 metriques <- indices %>%
@@ -669,6 +698,7 @@ donnee_carte <- stations %>%
     code_masse_eau,
     libelle_masse_eau,
     code_dep,
+    reseau,
     UH_calculee,
     date_premier_prelevement,
     date_dernier_prelevement,
@@ -682,38 +712,38 @@ donnee_carte <- stations %>%
     libelle_dernier_indice,
     dernier_resultat)
 
-# Table donnee_carte_taxon##
-# Table donnee_carte_taxon##
+# Table donnee_carte_taxon
 donnee_carte_taxon <- taxons %>%
   mutate(
     date_prelevement = as.Date(date_prelevement), # Pour les dates
-    annee = year(date_prelevement) ) %>%
+    annee = year(date_prelevement) ) %>% # Année du prélèvement
   group_by(
     code_station,
     libelle_station, # Regroupement
     code_support,
     libelle_taxon,
-    code_appel_taxon) %>%
+    code_appel_taxon,
+    code_qualification,
+    libelle_qualification ) %>%
   summarise(
     abondance_moyenne = mean(resultat_taxon, na.rm = TRUE), # Moyenne de l'abondance
     abondance_min = min(resultat_taxon, na.rm = TRUE), # Abondance minimale
     abondance_max = max(resultat_taxon, na.rm = TRUE), # Abondance maximale
-    annee_min = min(annee, na.rm = TRUE),
-    annee_max = max(annee, na.rm = TRUE), # Calcul des années min et max
+    annee_min = min(annee, na.rm = TRUE), # Année minimale
+    annee_max = max(annee, na.rm = TRUE), # Année maximale
     code_prelevement = paste(unique(code_prelevement), collapse = " ; "), # Regroupe les codes prélèvements
+    date_prelevement = paste(sort(unique(date_prelevement)), collapse = " ; "), # Regroupe les dates
     resultat_taxon = paste(unique(resultat_taxon), collapse = " ; "), # Regroupe les résultats taxons
-    .groups = "drop" ) %>%
+    .groups = "drop") %>%
   mutate(
     eqb = dplyr::case_when(
       code_support == "10" ~ "Diatomées",
       code_support == "13" ~ "Macroinvertébrés",
       code_support == "27" ~ "Macrophytes",
-      code_support == "4"  ~ "Poissons",
-      TRUE ~ NA_character_ ), # Associer chaque code_support à son EQB pour le filtre dans l'application
-
+      code_support == "4" ~ "Poissons",
+      TRUE ~ NA_character_), # Associer chaque code_support à son EQB
     abondance_min_affichee = sub("\\.?0+$", "", sprintf("%.3f", abondance_min)), # Format abondance min
     abondance_max_affichee = sub("\\.?0+$", "", sprintf("%.3f", abondance_max)), # Format abondance max
-
     resume = paste0(
       "abondance: ",
       abondance_min_affichee,
@@ -723,32 +753,46 @@ donnee_carte_taxon <- taxons %>%
       annee_min,
       "-",
       annee_max,
-      ")"  ), # Permet de bien afficher le resume comme dans IDF
+      ")" ), # Résumé affiché dans le popup
     hover = paste0(
       "<b>", libelle_taxon, "</b><br>",
-      "<em>", libelle_station, "</em><br><br>", # Permet de bien afficher comme dans IDF
-      resume ) ) %>%
+      "<em>", libelle_station, "</em><br><br>",
+      resume ) ) %>% # Texte au survol
   left_join(
     stations %>%
       st_drop_geometry() %>%
-      select(code_station, code_dep, coordonnee_x, coordonnee_y), # Recuperer les données utiles
+      select(
+        code_station,
+        code_dep,
+        coordonnee_x,
+        coordonnee_y,
+        reseau ), # Récupère les données utiles
     by = "code_station" ) %>%
-  filter(!is.na(coordonnee_x), !is.na(coordonnee_y)) %>% # Retirer les lignes sans coordonnées
-  st_as_sf(coords = c("coordonnee_x", "coordonnee_y"), crs = 2154, remove = FALSE) %>% # Transformation en objet spatial
+  filter(
+    !is.na(coordonnee_x),
+    !is.na(coordonnee_y) ) %>% # Retire les lignes sans coordonnées
+  st_as_sf(
+    coords = c("coordonnee_x", "coordonnee_y"),
+    crs = 2154,
+    remove = FALSE) %>% # Transformation en objet spatial
   select(
     code_dep,
     code_station,
+    reseau,
     geometry,
     libelle_station,
     code_support,
     eqb,
     libelle_taxon,
-    abondance_moyenne, # Selection finale
+    abondance_moyenne,
     resume,
     hover,
     code_prelevement,
+    date_prelevement,
     code_appel_taxon,
-    resultat_taxon)
+    resultat_taxon,
+    code_qualification,
+    libelle_qualification)
 
 #### Table pour le diag####
 #Construction table entree_miv_seee
