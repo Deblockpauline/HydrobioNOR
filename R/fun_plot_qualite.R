@@ -7,10 +7,12 @@
 #' @return Un tableau filtré contenant les données de qualité
 #' @noRd
 
-fun_prep_qualite <- function(donnees, # Liste contenant les tables de l'application
+fun_prep_qualite <- function(donnees,
                              choix_departements = NULL,
                              choix_eqb = NULL,
-                             choix_uh = NULL) {
+                             choix_uh = NULL,
+                             choix_reseau = NULL,
+                             choix_qualification = NULL) {
 
   # Vérifie que les données nécessaires existent
   if (is.null(donnees) || # Vérifie la liste globale
@@ -37,7 +39,8 @@ fun_prep_qualite <- function(donnees, # Liste contenant les tables de l'applicat
   data <- filtrer_donnees(
     data = data, # Table à filtrer
     choix_departements = choix_departements, # Département sélectionné
-    choix_eqb = choix_eqb_etat_bio) # EQB harmonisé
+    choix_eqb = choix_eqb_etat_bio, # EQB harmonisé
+    choix_qualification = choix_qualification) # Qualif selectionnée
 
   # Sécurité : si le filtre renvoie NULL
   if (is.null(data)) {data <- donnees$etat_bio} # Reprend la table complète
@@ -46,7 +49,8 @@ fun_prep_qualite <- function(donnees, # Liste contenant les tables de l'applicat
   stations_filtrees <- filtrer_stations(
     station = donnees$stations, # Table stations
     choix_departement = choix_departements, # Département sélectionné
-    choix_uh = choix_uh) # UH sélectionnée
+    choix_uh = choix_uh, # UH sélectionnée
+    choix_reseau = choix_reseau) # Reseau sélectionné
 
   # Sécurité : si aucun filtre station valide
   if (is.null(stations_filtrees)) {stations_filtrees <- donnees$stations} # Reprend toutes les stations
@@ -93,7 +97,7 @@ fun_plot_qualite <- function(donnees_graphique) {
           label = "Aucune donnée disponible pour le graphique") ) } # Texte afficher
 
   data_plot <- donnees_graphique %>% # Preparation des données
-    dplyr::distinct(code_station, annee, libelle_indice, classe_indice) %>% # Enleve les doublons
+    dplyr::distinct(code_station, annee, libelle_indice, classe_indice, libelle_qualification) %>% # Enleve les doublons
     dplyr::mutate(
       classe_indice = tidyr::replace_na(classe_indice, "Non renseigné"), # Remplace les NA
       cycle_dce = dplyr::case_when( # Creer les période DCE
@@ -104,10 +108,11 @@ fun_plot_qualite <- function(donnees_graphique) {
         TRUE ~ NA_character_) ) %>%
     dplyr::filter(!is.na(cycle_dce)) %>% # Enleve les NA
     dplyr::filter(libelle_indice != "IPS") %>% # Retire IPS car il n'a pas de classe
-    dplyr::group_by(cycle_dce, libelle_indice, classe_indice) %>% # Regroupement pour compter les stations
+    dplyr::group_by(cycle_dce, libelle_indice, classe_indice) %>%
     dplyr::summarise(
-      n = dplyr::n_distinct(code_station), # Nombre de station unique
-      .groups = "drop" )
+      n = dplyr::n_distinct(code_station),
+      qualifications = paste(unique(libelle_qualification), collapse = ", "),
+      .groups = "drop" ) # Pour afficher la qualification
 
   data_plot <- data_plot %>% # Mise en forme pour un affichage propre
     dplyr::mutate(
@@ -127,6 +132,7 @@ fun_plot_qualite <- function(donnees_graphique) {
         "Indice : ", libelle_indice,
         "<br>Période : ", cycle_dce,
         "<br>Classe : ", classe_indice,
+        "<br>Qualification : ", qualifications,
         "<br>Nombre de stations : ", n) )
 
   # Construction du graphique final

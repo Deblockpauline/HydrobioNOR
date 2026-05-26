@@ -36,7 +36,9 @@ fun_plot_taxons_station <- function(taxons) { # Fonction du graphique taxons
         "<br><b>Support :</b> ", libelle_support, # Support
         "<br><b>Résultat taxon :</b> ", resultat_taxon, # Valeur taxon
         "<br><b>Abondance relative :</b> ",
-        round(abondance_relative, 4) ) ) ) + # Arrondi abondance
+        round(abondance_relative, 4),
+        "<br><b>Qualification :</b> ", libelle_qualification, # Qualifiaction
+        "<br><b>Réseau :</b> ", reseau ) ) ) + # Reseau
     ggplot2::geom_point( # Ajout des points
       alpha = 0.8) + # Transparence
     ggplot2::scale_size_continuous( # Taille des points

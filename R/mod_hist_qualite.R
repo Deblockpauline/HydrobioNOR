@@ -20,6 +20,8 @@ mod_hist_qualite_ui <- function(id) {
     # Bloc de texte explicatif sous le graphique
     shiny::div(
       style = "font-size: 12px; color: #555; line-height: 1.4;", # Style discret et lisible
+      shiny::p(
+        "Pour rappel, ce graphique est incompatble avec le filtre qualité incorrecte car il n'exsite pas de données"),
       shiny::p( # Description générale du graphique
         "Ce graphique présente la répartition des stations selon leur classe de qualité écologique pour différents indices biologiques (I2M2, IBD, IBMR, IPR, IBG équivalent), en fonction des cycles de la Directive Cadre sur l’Eau (DCE)." ),
       shiny::p(  # Explication de la structure des barres
@@ -44,31 +46,52 @@ mod_hist_qualite_ui <- function(id) {
 #' @return Un graphique interactif affiché dans l'UI
 #' @noRd
 
-mod_hist_qualite_server <- function(id, donnees, choix_departements, choix_eqb, choix_uh) {
-  shiny::moduleServer(id, function(input, output, session) {
+mod_hist_qualite_server <- function(id,
+                                    donnees,
+                                    choix_departements,
+                                    choix_eqb,
+                                    choix_uh,
+                                    choix_reseau,
+                                    choix_qualification = NULL) {
+
+   shiny::moduleServer(id, function(input, output, session) {
 
     donnees_qualite <- shiny::reactive({ # Reactive contenant les données de qualité filtrée
       shiny::req(donnees()) # Vérifie que les données sont chargées
       fun_prep_qualite( # Appel de la fonction de prep
-        donnees = donnees(),
+        donnees = donnees(),# Selon les données et les filtres
         choix_departements = choix_departements(),
         choix_eqb = choix_eqb(),
-        choix_uh = choix_uh() )})
+        choix_uh = choix_uh(),
+        choix_reseau = choix_reseau(),
+        choix_qualification = choix_qualification())})
 
-    # Affichage du graphique
+# Graphique
     output$plot_qualite <- plotly::renderPlotly({
-      shiny::req(donnees_qualite()) # Vérifie que les données sont disponibles
-      p <- fun_plot_qualite(donnees_qualite())  # Création du graphique ggplot
-      plotly::ggplotly(p, tooltip = "text") %>% # Conversion en ploty
+      df <- donnees_qualite() # Données filtrées
+      shiny::validate(
+        shiny::need(
+          !is.null(df) && nrow(df) > 0,
+          "Aucune donnée disponible pour cette combinaison de filtres.") )
+      p <- fun_plot_qualite(df) # Création du graphique ggplot
+      plotly::ggplotly(
+        p,
+        tooltip = "text" ) %>%
         plotly::layout(
           margin = list(
-            l = 60, # marge gauche (axe Y)
-            r = 20, # marge droite
-            b = 60, # marge bas (axe X)
-            t = 30 )) # marge haut
-    } )
-  } )
-}
+            l = 60, # Marge gauche
+            r = 20, # Marge droite
+            b = 60, # Marge bas
+            t = 30 ) ) %>% # Marge haut
+        plotly::config(
+          toImageButtonOptions = list(
+            format = "png", # Format
+            filename = "qualite_indices", # Nom du fichier
+            height = 800, # Hauteur image
+            width = 1200, # Largeur image
+            scale = 2 )# Qualité
+        ) } )
+  } ) }
 
 ## À appeler dans l'UI
 # mod_hist_qualite_ui("hist_qualite_commu")

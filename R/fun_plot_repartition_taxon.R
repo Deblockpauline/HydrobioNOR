@@ -6,8 +6,9 @@
 #' @param choix_departements Départements sélectionnés
 #' @param choix_eqb EQB sélectionnés
 #' @param choix_uh UH sélectionnées
+#' @param choix_reseau Reseau sélectionné
+#' @param choix_qualification
 #' @param taxon_selectionne Taxon sélectionné
-#'
 #' @return Un graphique plotly
 #' @noRd
 
@@ -15,14 +16,18 @@ fun_plot_repartition_taxon <- function(donnees,
                                        choix_departements = NULL,
                                        choix_eqb = NULL,
                                        choix_uh = NULL,
+                                       choix_reseau = NULL,
+                                       choix_qualification = NULL,
                                        taxon_selectionne = NULL) {
 
-  df <- fun_filtrer_repartition_taxon( # Filtre les données (appel la fonction)
-    donnees = donnees, # Liste des données
-    choix_departements = choix_departements, # Départements choisis
-    choix_eqb = choix_eqb, # EQB choisis
-    choix_uh = choix_uh, # UH choisies
-    taxon_selectionne = taxon_selectionne ) # Taxon choisi
+  df <- fun_filtrer_repartition_taxon( # Appel la fonction selon les filtres
+    donnees = donnees,
+    choix_departements = choix_departements,
+    choix_eqb = choix_eqb,
+    choix_uh = choix_uh,
+    choix_reseau = choix_reseau,
+    choix_qualification = choix_qualification,
+    taxon_selectionne = taxon_selectionne)
 
   # Vérification
   if (is.null(df) || nrow(df) == 0) { return (NULL) } # Si aucune donnée, arrete
@@ -31,7 +36,6 @@ fun_plot_repartition_taxon <- function(donnees,
   df_plot <- df |>
     sf::st_drop_geometry() |> # Supprime la géométrie
     dplyr::mutate( # Extraction + nettoyage des années
-
       annee = purrr::map( # Boucle pour chaque ligne
         resume, # Texte résumé
         ~ { annees <- stringr::str_extract_all( # Extraction des années
@@ -83,7 +87,16 @@ fun_plot_repartition_taxon <- function(donnees,
         angle = 45, # Inclinaison du texte
         hjust = 1 ) ) # Alignement du texte
 
-  plotly::ggplotly( # Conversion ggplot vers plotly
-    gg, # Graphique ggplot
-    tooltip = "text" ) # Texte affiché au survol
+  plotly::ggplotly( # Conversion en ploty
+    gg,
+    tooltip = "text") %>% # Texte affiché au survol
+    plotly::config(
+      toImageButtonOptions = list(
+        format = "png", # Format
+        filename = paste0(
+          "repartition_taxon_",
+          taxon_selectionne ), # Nom fichier
+        height = 800, # Hauteur
+        width = 1200, # Largeur
+        scale = 2 ) )# Qualité
 }

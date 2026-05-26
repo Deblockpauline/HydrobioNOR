@@ -5,6 +5,8 @@
 #' @param choix_departements Départements sélectionnés
 #' @param choix_eqb EQB sélectionnés
 #' @param choix_uh UH sélectionnées
+#' @param choix_reseau  Reseau selectionné
+#' @param choix_qualification Qualif selectionnée
 #' @param taxon_selectionne Taxon sélectionné
 #' @return Une table filtrée
 #' @noRd
@@ -13,13 +15,16 @@ fun_filtrer_repartition_taxon <- function(donnees,
                                           choix_departements = NULL,
                                           choix_eqb = NULL,
                                           choix_uh = NULL,
+                                          choix_reseau = NULL,
+                                          choix_qualification = NULL,
                                           taxon_selectionne = NULL) {
 
   df <- donnees$donnee_carte_taxon # Table utilisée pour la carte
   if (nrow(df) == 0) {return(NULL) } # Verif, si la table est vide, arrête la fonction
 
 # Filtre global
-  # Filtre département
+
+   # Filtre département
   if (!is.null(choix_departements) && # Si un choix existe
       length(choix_departements) > 0 && # Si au moins un département
       !("Tous" %in% choix_departements)) { # Si ce n'est pas Tous
@@ -51,6 +56,26 @@ fun_filtrer_repartition_taxon <- function(donnees,
     df <- dplyr::filter( # Filtre la table taxon
       df,
       code_station %in% stations_uh ) } # Garde les stations des UH
+
+  # Filtre réseau, meme fonctionnement mais attention au séparateur - ou /
+  if (!is.null(choix_reseau) &&
+      length(choix_reseau) > 0 &&
+      !("Tous" %in% choix_reseau) &&
+      "reseau" %in% names(df)) {
+    df <- dplyr::filter(
+      df,
+      stringr::str_detect(
+        reseau,
+        paste(choix_reseau, collapse = "|") ) ) }
+
+  # Filtre qualification, meme fonctionnement
+  if (!is.null(choix_qualification) &&
+      length(choix_qualification) > 0 &&
+      !("Toutes" %in% choix_qualification) &&
+      "libelle_qualification" %in% names(df)) {
+    df <- dplyr::filter(
+      df,
+      libelle_qualification %in% choix_qualification )}
 
 # Filtre du choix
   # Filtre taxon

@@ -1,293 +1,360 @@
 #' carte UI Function
 #'
 #' @description Module Shiny permettant d'afficher une carte interactive des stations de suivi
-#'
 #' @noRd
 #' @importFrom shiny NS tagList
 #' @importFrom leaflet leafletOutput
 #' @export
 
-
 mod_station_carte_ui <- function(id, hauteur = "700px") { # Hauteur de la carte
-  ns <- shiny::NS(id)
+  ns <- shiny::NS(id) # Namespace du module
+
   shiny::tagList( # Sert à regrouper plusieurs éléments
-    shiny::selectizeInput(  # Barre de recherche pour retrouver une station par son nom
+
+    shiny::selectizeInput( # Barre de recherche pour retrouver une station par son nom
       inputId = ns("recherche_station"), # ID
       label = "Rechercher une station", # Texte affiché
-      choices = NULL,
-      selected = NULL,
+      choices = NULL, # Choix ajoutés côté serveur
+      selected = NULL, # Aucune station au départ
       multiple = FALSE, # 1 Station a la fois
       options = list(
         placeholder = "Tapez le nom ou le code d'une station", # Liste déroulante
         maxOptions = 10000) ), # Afin de voir toutes les stations
 
-    leaflet::leafletOutput(ns("carte_stations"), height = hauteur) ) }  # Affichage de la carte leaflet
+    leaflet::leafletOutput(
+      outputId = ns("carte_stations"), # ID de la carte
+      height = hauteur) ) # Affichage de la carte leaflet
+}
 
 #' Carte server Function
-#' @description Module shiny qui permet d'afficher les données sur la carte
 #'
+#' @description Module shiny qui permet d'afficher les données sur la carte
 #' @param choix_departements Reactive contenant les départements sélectionnés
 #' @param choix_eqb Reactive contenant les EQB sélectionnés
 #' @param choix_uh Reactive contenant les UH sélectionnées
-#'
+#' @param choix_reseau Reactive contenant les reseaux sélectionnés
+#' @param choix_qualification Reactive contenant les qualif sélectionnées
 #' @return Reactive du code de la station sélectionnée
 #' @noRd
 
-mod_station_carte_server <- function(id,
+mod_station_carte_server <- function(id, # Logique qui recoit les données et les choix
                                      donnees,
                                      choix_departements,
                                      choix_eqb,
-                                     choix_uh) {
+                                     choix_uh,
+                                     choix_reseau,
+                                     choix_qualification = NULL) {
+
   shiny::moduleServer(id, function(input, output, session) { # Structure standard
 
-    # Données utilisées pour afficher les stations sur la carte
+# Stocke la station sélectionnée par l'utilisateur
+    station_selectionnee <- shiny::reactiveVal(NULL) # Aucune station au démarrage
+
+# Données utilisées pour afficher les stations sur la carte
     stations_filtrees <- shiny::reactive({ # Recalculé dès qu'une donnée change
       shiny::req(donnees()) # On continue seulement si les données existent
       shiny::req(donnees()$donnee_carte) # Vérifie la présence de la table donnees_carte
-      shiny::req(donnees()$donnee_carte_taxon) # Vérifie la présence de la table donnees_carte_taxon ( EQB)
+      shiny::req(donnees()$donnee_carte_taxon) # Vérifie la présence de la table donnees_carte_taxon
 
       df <- donnees()$donnee_carte # Table principale des stations affichées sur la carte
-      df_taxon <- donnees()$donnee_carte_taxon # Table annexe pour les indices
+      df_taxon <- donnees()$donnee_carte_taxon # Table annexe pour les taxons
+      df_etat <- donnees()$etat_bio # Table annexe pour les indices
 
-      shiny::req(inherits(df, "sf")) # Vérifie que la table principale est bien un objet spatial sf
-      shiny::req(nrow(df) > 0) # Vérifie qu'elle n'est pas vide
-
-      # Application du filtre département
-      if (!is.null(choix_departements()) && # && = ET logique, les conditions doivent être vraies en même temps
-          length(choix_departements()) > 0 && # Si un département est sélectionné
-          !("Tous" %in% choix_departements())) { # et que ce n'est pas "Tous", alors on filtre
-        df <- dplyr::filter( # On garde uniquement les stations des départements sélectionnés
+# Application du filtre département
+      if (!is.null(choix_departements()) && # Filtre existe
+          length(choix_departements()) > 0 && # Au moins un choix
+          !("Tous" %in% choix_departements())) { # Pas tous
+        df <- dplyr::filter( # Garde seulement les départements choisis
           df,
           code_dep %in% choix_departements() ) }
 
-      # Application du filtre EQB
-      if (!is.null(choix_eqb()) && # Vérifie qu'un EQB est sélectionné
-          length(choix_eqb()) > 0 && # Vérifie qu'il y a au moins un choix
-          !("Tous" %in% choix_eqb())) { # Si ce n'est pas "Tous", alors on filtre
+# Application du filtre EQB
+      if (!is.null(choix_eqb()) && # Filtre existe
+          length(choix_eqb()) > 0 && # Au moins un choix
+          !("Tous" %in% choix_eqb())) { # Pas tous
         stations_eqb <- df_taxon |>
           sf::st_drop_geometry() |> # Supprime la géométrie
-          dplyr::filter(eqb %in% choix_eqb()) |> # Garde les lignes correspondant aux EQB sélectionnés
-          dplyr::distinct(code_station) |> # Garde une seule fois chaque station
-          dplyr::pull(code_station) # Extrait uniquement les codes station
-        df <- dplyr::filter( # On garde uniquement les stations ayant l'EQB sélectionné
+          dplyr::filter(eqb %in% choix_eqb()) |> # Garde EQB choisi
+          dplyr::distinct(code_station) |> # Stations uniques
+          dplyr::pull(code_station) # Codes stations
+        df <- dplyr::filter( # Garde les stations avec EQB choisi
           df,
-          code_station %in% stations_eqb ) }
+          code_station %in% stations_eqb) }
 
-      # Application du filtre UH
-      if (!is.null(choix_uh()) && # Vérifie qu'une UH est sélectionnée
-          length(choix_uh()) > 0 && # Vérifie qu'il y a au moins un choix
-          !("Toutes" %in% choix_uh()) && # Si ce n'est pas "Toutes", alors on filtre
-          "UH_calculee" %in% names(df)) { # Vérifie que la colonne UH existe
-        df <- dplyr::filter( # On garde uniquement les stations appartenant aux UH sélectionnées
+# Application filtre qualification
+      if (!is.null(choix_qualification) && # Filtre existe
+          !is.null(choix_qualification()) && # Valeur existe
+          length(choix_qualification()) > 0 && # Au moins un choix
+          !("Toutes" %in% choix_qualification())) { # Pas toutes
+
+        stations_qualification_etat <- df_etat |> # Table état bio
+          dplyr::filter(
+            libelle_qualification %in% choix_qualification()) |> # Qualification choisie
+          dplyr::distinct(code_station) |> # Stations uniques
+          dplyr::pull(code_station) # Codes stations
+        stations_qualification_taxon <- df_taxon |> # Table taxons
+          sf::st_drop_geometry() |> # Supprime géométrie
+          dplyr::filter(
+            libelle_qualification %in% choix_qualification()) |> # Qualification choisie
+          dplyr::distinct(code_station) |> # Stations uniques
+          dplyr::pull(code_station) # Codes stations
+        stations_qualification <- unique(c( # Fusion sans doublons
+          stations_qualification_etat,
+          stations_qualification_taxon))
+
+        df <- dplyr::filter( # Garde les stations compatibles
           df,
-          UH_calculee %in% choix_uh()) }
+          code_station %in% stations_qualification) }
 
-      shiny::req(nrow(df) > 0) # Vérifie qu'il reste au moins une station après filtrage
-      sf::st_transform(df, 4326) # Conversion en WGS84 (EPSG:4326), obligatoire
-    } )
+# Application du filtre UH
+      if (!is.null(choix_uh()) && # Filtre existe
+          length(choix_uh()) > 0 && # Au moins un choix
+          !("Toutes" %in% choix_uh()) && # Pas toutes
+          "UH_calculee" %in% names(df)) { # Colonne existe
+        df <- dplyr::filter( # Garde les UH choisies
+          df,
+          UH_calculee %in% choix_uh())  }
 
-    # Couches préparées dans le script de préparation des données de référence
+# Application du filtre réseau
+      if (!is.null(choix_reseau()) && # Filtre existe
+          length(choix_reseau()) > 0 && # Au moins un choix
+          !("Tous" %in% choix_reseau()) && # Pas tous
+          "reseau" %in% names(df)) { # Colonne existe
+        df <- dplyr::filter( # Garde les réseaux choisis
+          df,
+          stringr::str_detect(
+            reseau,
+            paste(choix_reseau(), collapse = "|") ) ) }
+
+# Message si rien
+       shiny::validate(
+        shiny::need(
+          nrow(df) > 0,
+          "Aucune donnée disponible pour cette combinaison de filtres."))
+      sf::st_transform(df, 4326) } ) # Conversion en WGS84
+
+# Couches préparées dans le script de préparation des données de référence
     limites_region_carte <- shiny::reactive({ # Limite des régions
-      sf::st_transform(limites_region_l, 4326) } )  # Conversion en WGS84 pour leaflet
+      sf::st_transform(limites_region_l, 4326) } ) # Conversion WGS84
     limites_cours_eau_carte <- shiny::reactive({ # Cours d'eau
       sf::st_transform(limites_cours_eau, 4326) } )
-    limites_bv_carte <- shiny::reactive({ # Bassin versant
+    limites_bv_carte <- shiny::reactive({ # Bassins versants
       sf::st_transform(limites_bv_l, 4326) } )
 
-    # Mise à jour de la liste déroulante selon les stations actuellement filtrées
-    shiny::observe({ #Se réexécute dès qu'on change le choix
-      df <- stations_filtrees() # Récupère les stations filtrées
-      df_choix <- df |>
-        sf::st_drop_geometry() |> # Supprime la géométrie
-        dplyr::distinct(code_station, libelle_station) |> # Évite les doublons dans la liste
-        dplyr::arrange(libelle_station) # Trie les stations par ordre alphabétique
-      choix <- stats::setNames( # Crée les choix du menu sous la forme "Nom station (code)"
-        object = df_choix$code_station, # Shiny récupère seulement le code
-        nm = paste0(df_choix$libelle_station, " (", df_choix$code_station, ")") ) # Affichage de Nom station (code)
-      shiny::updateSelectizeInput(  # Met à jour la liste quand les filtres sont appliqués
-        session = session,
-        inputId = "recherche_station",
-        choices = choix,
-        selected = isolate(input$recherche_station), # Conserve la valeur actuelle si possible
-        server = TRUE ) } )
-
-    # Stocke la station sélectionnée par l'utilisateur
-    station_selectionnee <- shiny::reactiveVal(NULL)
-
-    # Création initiale de la carte
+# Création initiale de la carte
     output$carte_stations <- leaflet::renderLeaflet({ # Carte interactive
-      df <- stations_filtrees() # Stations filtrées à afficher
       limites_region <- limites_region_carte() # Limites administratives
       cours_eau <- limites_cours_eau_carte() # Cours d'eau
       bassins_versants <- limites_bv_carte() # Bassins versants
-      coords <- sf::st_coordinates(df) # Extraction des coordonnées des stations
-      centre_lng <- mean(coords[, 1], na.rm = TRUE) # Calcul du centre moyen pour centrer la carte
-      centre_lat <- mean(coords[, 2], na.rm = TRUE)
-      leaflet::leaflet(data = df) %>% # Initialise la carte avec les stations
-        leaflet::addTiles() %>% # Ajoute le fond de carte OpenStreetMap
-        leaflet::addMapPane("hydro", zIndex = 405) %>% # Plan dédié aux cours d'eau
-        leaflet::addMapPane("bv", zIndex = 408) %>% # Plan dédié aux bassins versants
-        leaflet::addMapPane("limites", zIndex = 410) %>% # Plan dédié aux limites régionales
-        leaflet::addMapPane("points", zIndex = 420) %>% # Plan dédié aux stations, affiché au-dessus
-        leaflet::setView(
-          lng = centre_lng, # Centre initial de la carte
-          lat = centre_lat,
-          zoom = 8 ) %>%
-        leaflet::addPolylines( # Ajout des cours d'eau
-          data = cours_eau,
-          color = "#2C7FB8",
-          opacity = 0.7,
-          weight = 1,
-          group = "Cours d'eau",
-          options = leaflet::pathOptions(pane = "hydro") ) %>%
-        leaflet::addPolylines( # Ajout des limites des bassins versants
-          data = bassins_versants,
-          color = "red",
-          opacity = 0.8,
-          weight = 1.2,
-          group = "Bassins versants",
-          options = leaflet::pathOptions(pane = "bv") ) %>%
-        leaflet::addPolylines( # Ajout des limites régionales
-          data = limites_region,
-          color = "black",
-          opacity = 1,
-          weight = 2,
-          group = "Limites administratives",
-          options = leaflet::pathOptions(pane = "limites") ) %>%
-        leaflet::addCircleMarkers( # Ajout des points représentant les stations
-          data = df, # Données des stations
-          radius = 6, # Taille des points
-          stroke = TRUE, # Affiche un contour
-          color = "black", # Couleur du contour
-          weight = 1, # Épaisseur du contour
-          fillColor = "#D9D9D9", # Couleur intérieure du point
-          fillOpacity = 1, # Opacité du point
-          layerId = ~code_station, # Identifiant du point = code station
-          label = ~libelle_station, # Étiquette au survol
-          options = leaflet::pathOptions(pane = "points"), # Affiche les points au-dessus
-          popup = ~paste0( # Petite etiquette
-            "<b>", libelle_station, "</b><br/>", # <b> = texte en gras
-            "Code station : ", code_station, "<br/>", # <br/> = retour à la ligne
-            "Cours d'eau : ", libelle_cours_eau, "<br/>",
-            "Département : ", code_dep ) ) %>%
-        leaflet::addLayersControl( # Panneau pour afficher ou masquer les couches de fond
-          overlayGroups = c("Limites administratives", "Cours d'eau", "Bassins versants"),
-          options = leaflet::layersControlOptions(collapsed = FALSE) ) %>%
-        leaflet::hideGroup("Bassins versants") # Masque les bassins versants au démarrage pour alléger la carte
-    } )
 
-    # Mise à jour des points affichés quand les filtres changent
-    shiny::observe({ # Mise à jour automatique de la carte
+      leaflet::leaflet(
+        options = leaflet::leafletOptions(
+          preferCanvas = TRUE)) |> # Affichage plus léger
+        leaflet::addTiles() |> # Ajoute le fond de carte OpenStreetMap
+        leaflet::addMapPane("hydro", zIndex = 405) |> # Plan dédié aux cours d'eau
+        leaflet::addMapPane("bv", zIndex = 408) |> # Plan dédié aux bassins versants
+        leaflet::addMapPane("limites", zIndex = 410) |> # Plan dédié aux limites régionales
+        leaflet::addMapPane("points", zIndex = 420) |> # Plan dédié aux stations
+        leaflet::setView(
+          lng = 0.2, # Centre général Normandie
+          lat = 49.1, # Centre général Normandie
+          zoom = 8) |> # Zoom régional
+        leaflet::addPolylines(
+          data = cours_eau, # Données cours d'eau
+          color = "#2C7FB8", # Couleur bleue
+          opacity = 0.7, # Transparence
+          weight = 1, # Épaisseur
+          group = "Cours d'eau", # Groupe
+          options = leaflet::pathOptions(pane = "hydro")) |> # Plan hydro
+        leaflet::addPolylines(
+          data = bassins_versants, # Données bassins
+          color = "red", # Couleur rouge
+          opacity = 0.8, # Transparence
+          weight = 1.2, # Épaisseur
+          group = "Bassins versants", # Groupe
+          options = leaflet::pathOptions(pane = "bv")) |> # Plan BV
+        leaflet::addPolylines(
+          data = limites_region, # Données limites
+          color = "black", # Couleur noire
+          opacity = 1, # Pas de transparence
+          weight = 2, # Épaisseur
+          group = "Limites administratives", # Groupe
+          options = leaflet::pathOptions(pane = "limites")) |> # Plan limites
+        leaflet::addLayersControl(
+          overlayGroups = c(
+            "Limites administratives",
+            "Cours d'eau",
+            "Bassins versants"),
+          options = leaflet::layersControlOptions(collapsed = FALSE)) |> # Contrôle ouvert
+        leaflet::hideGroup("Bassins versants") } )# Masque les bassins au démarrage
+
+    shiny::outputOptions(
+      output,
+      "carte_stations",
+      suspendWhenHidden = FALSE)
+
+# Mise à jour de la liste déroulante selon les stations actuellement filtrées
+    shiny::observe({ # Mise à jour automatique de la liste
       df <- stations_filtrees() # Récupère les stations filtrées
+      df_choix <- df |>
+        sf::st_drop_geometry() |> # Supprime la géométrie
+        dplyr::distinct(code_station, libelle_station) |> # Stations uniques
+        dplyr::arrange(libelle_station) # Tri alphabétique
+      choix <- stats::setNames( # Format nom affiché / valeur renvoyée
+        object = df_choix$code_station, # Valeur = code station
+        nm = paste0(df_choix$libelle_station, " (", df_choix$code_station, ")")) # Affichage
+      selected_station <- station_selectionnee() # Station déjà sélectionnée
+
+      if (is.null(selected_station) || # Aucune station
+          length(selected_station) == 0 || # Sélection vide
+          !selected_station %in% df_choix$code_station) { # Station plus disponible
+        selected_station <- character(0) # Aucune sélection dans la liste
+        station_selectionnee(NULL) } # Aucune station sélectionné
+
+      shiny::updateSelectizeInput(
+        session = session,
+        inputId = "recherche_station",
+        choices = choix,
+        selected = selected_station, # Vide au démarrage
+        server = TRUE) } )
+
+# Mise à jour des points affichés quand les filtres changent
+    shiny::observe({ # Mise à jour automatique des points
+      df <- stations_filtrees() # Récupère les stations filtrées
+
       coords <- sf::st_coordinates(df) # Récupère les coordonnées
-      centre_lng <- mean(coords[, 1], na.rm = TRUE) # Recalcul du centre de la carte selon les stations restantes
-      centre_lat <- mean(coords[, 2], na.rm = TRUE)
-      leaflet::leafletProxy("carte_stations", session = session) %>% # Modifie la carte existante sans la recréer
-        leaflet::clearMarkers() %>% # Supprime les anciens points
-        leaflet::setView( # Recentre la carte
-          lng = centre_lng,
-          lat = centre_lat,
-          zoom = 8) %>%
-        leaflet::addCircleMarkers( # Réaffiche les nouvelles stations filtrées
-          data = df, # Données des stations
+      centre_lng <- mean(coords[, 1], na.rm = TRUE) # Centre longitude
+      centre_lat <- mean(coords[, 2], na.rm = TRUE) # Centre latitude
+
+      station_sel <- station_selectionnee() # Station sélectionnée
+      station_choisie <- df[0, ] # Table vide par défaut
+
+      if (!is.null(station_sel) && # Une station existe
+          length(station_sel) > 0 && # Sélection non vide
+          station_sel %in% df$code_station) { # Station visible
+        station_choisie <- df |>
+          dplyr::filter(code_station == station_sel) } # Station choisie
+      proxy <- leaflet::leafletProxy("carte_stations", session = session) |> # Modifie la carte existante
+        leaflet::clearGroup("stations") |> # Supprime seulement les points gris
+        leaflet::clearGroup("station_selectionnee") |> # Supprime seulement le point bleu
+        leaflet::clearPopups() |> # Ferme les popups
+        leaflet::addCircleMarkers(
+          data = df, # Données stations
+          group = "stations", # Groupe des points gris
           radius = 6, # Taille des points
-          stroke = TRUE, # Affiche un contour
-          color = "black", # Couleur du contour
-          weight = 1, # Épaisseur du contour
-          fillColor = "#D9D9D9", # Couleur grise des stations
-          fillOpacity = 1, # Opacité du point
-          layerId = ~code_station, # Identifiant du point
-          label = ~libelle_station, # Étiquette au survol
-          options = leaflet::pathOptions(pane = "points"), # Affiche les points au-dessus
-          popup = ~paste0( # Petite etiquette
+          stroke = TRUE, # Contour
+          color = "black", # Couleur contour
+          weight = 1, # Épaisseur contour
+          fillColor = "#D9D9D9", # Couleur intérieure
+          fillOpacity = 1, # Opacité
+          layerId = ~code_station, # ID station
+          label = ~libelle_station, # Survol
+          options = leaflet::pathOptions(pane = "points"), # Plan points
+          popup = ~paste0(
             "<b>", libelle_station, "</b><br/>",
             "Code station : ", code_station, "<br/>",
             "Cours d'eau : ", libelle_cours_eau, "<br/>",
-            "Département : ", code_dep ) ) } )
+            "Département : ", code_dep))
+
+      if (nrow(station_choisie) == 1) { # Si une station est sélectionnée
+        coords_sel <- sf::st_coordinates(station_choisie) # Coordonnées station
+        proxy |>
+          leaflet::addCircleMarkers(
+            data = station_choisie, # Station sélectionnée
+            group = "station_selectionnee", # Groupe du point bleu
+            radius = 9, # Point plus gros
+            stroke = TRUE, # Contour
+            color = "black", # Couleur contour
+            weight = 2, # Contour plus épais
+            fillColor = "blue", # Couleur station sélectionnée
+            fillOpacity = 1, # Opacité
+            layerId = ~code_station, # ID station
+            label = ~libelle_station, # Survol
+            options = leaflet::pathOptions(pane = "points"), # Plan points
+            popup = ~paste0(
+              "<b>", libelle_station, "</b><br/>",
+              "Code station : ", code_station, "<br/>",
+              "Cours d'eau : ", libelle_cours_eau, "<br/>",
+              "Département : ", code_dep)) |>
+          leaflet::addPopups(
+            lng = coords_sel[1, 1],
+            lat = coords_sel[1, 2],
+            popup = paste0(
+              "<b>", station_choisie$libelle_station, "</b><br/>",
+              "Code station : ", station_choisie$code_station, "<br/>",
+              "Cours d'eau : ", station_choisie$libelle_cours_eau, "<br/>",
+              "Département : ", station_choisie$code_dep))
+      } else { # Si aucune station sélectionnée
+        proxy |>
+          leaflet::setView(
+            lng = centre_lng, # Centre sur les stations filtrées
+            lat = centre_lat,
+            zoom = 8) } } )
 
     # Sélection d'une station via la liste déroulante
     shiny::observeEvent(input$recherche_station, { # S'active seulement au clic dans la liste
       shiny::req(input$recherche_station) # Vérifie qu'une valeur a bien été choisie
-      station_selectionnee(input$recherche_station) }, # Met à jour la station sélectionnée
-      ignoreNULL = TRUE)
+      station_selectionnee(input$recherche_station) # Met à jour la station sélectionnée
+    }, ignoreNULL = TRUE)
 
     # Sélection d'une station via un clic sur un point de la carte
     shiny::observeEvent(input$carte_stations_marker_click, { # Déclenché au clic sur une station
       clic <- input$carte_stations_marker_click # Stocke les infos du clic
       shiny::req(clic$id) # Vérifie que l'identifiant du point existe
-      station_selectionnee(clic$id) # Met à jour la station sélectionnée avec le code station cliqué
-
-      # Mise à jour de la barre de recherche pour synchroniser la sélection
+      station_selectionnee(clic$id) # Met à jour la station sélectionnée
       shiny::freezeReactiveValue(input, "recherche_station") # Fige la barre après sélection
-      shiny::updateSelectizeInput( # En affichant le nom de la station sélectionnée
+      shiny::updateSelectizeInput(
         session = session,
         inputId = "recherche_station",
-        selected = clic$id ) }, ignoreNULL = TRUE)
+        selected = clic$id) # Synchronise la barre de recherche
+    }, ignoreNULL = TRUE)
 
     # Recentrage de la carte et ouverture du popup sur la station sélectionnée
     shiny::observeEvent(station_selectionnee(), { # Déclenché quand la station sélectionnée change
       code_station_sel <- station_selectionnee() # Récupère le code station sélectionné
       shiny::req(code_station_sel) # Vérifie qu'une station est sélectionnée
-
       df <- stations_filtrees() # Récupère les stations actuellement filtrées
-
-      station_choisie <- df |> # Recherche la station correspondant au code sélectionné
+      station_choisie <- df |>
         dplyr::filter(code_station == code_station_sel) # Garde uniquement la station choisie
-
       shiny::req(nrow(station_choisie) == 1) # Vérifie qu'une seule station correspond
 
       coords <- sf::st_coordinates(station_choisie) # Récupère ses coordonnées
 
-      leaflet::leafletProxy("carte_stations", session = session) %>% # Modifie la carte existante
-        leaflet::clearMarkers() %>% # Supprime les anciens points
-        leaflet::addCircleMarkers( # Réaffiche tous les points en gris
-          data = df, # Données des stations filtrées
-          radius = 6, # Taille des points
-          stroke = TRUE, # Affiche un contour
-          color = "black", # Couleur du contour
-          weight = 1, # Épaisseur du contour
-          fillColor = "#D9D9D9", # Couleur grise
-          fillOpacity = 1, # Opacité du point
-          layerId = ~code_station, # Identifiant du point
-          label = ~libelle_station, # Étiquette au survol
-          options = leaflet::pathOptions(pane = "points"), # Affiche les points au-dessus
-          popup = ~paste0( # Petite etiquette
-            "<b>", libelle_station, "</b><br/>",
-            "Code station : ", code_station, "<br/>",
-            "Cours d'eau : ", libelle_cours_eau, "<br/>",
-            "Département : ", code_dep ) ) %>%
-        leaflet::addCircleMarkers( # Rajoute la station choisie par-dessus en autre couleur
-          data = station_choisie, # Données de la station choisie
+      leaflet::leafletProxy("carte_stations", session = session) |> # Modifie la carte existante
+        leaflet::clearGroup("station_selectionnee") |> # Supprime seulement l'ancien point bleu
+        leaflet::clearPopups() |> # Ferme les anciens popups
+        leaflet::addCircleMarkers(
+          data = station_choisie, # Station choisie
+          group = "station_selectionnee", # Groupe du point bleu
           radius = 9, # Point plus gros
-          stroke = TRUE, # Affiche un contour
-          color = "black", # Couleur du contour
+          stroke = TRUE, # Contour
+          color = "black", # Couleur contour
           weight = 2, # Contour plus épais
-          fillColor = "blue", # Couleur de la station sélectionnée
-          fillOpacity = 1, # Opacité du point
+          fillColor = "blue", # Couleur station sélectionnée
+          fillOpacity = 1, # Opacité
           layerId = ~code_station, # Identifiant du point
           label = ~libelle_station, # Étiquette au survol
-          options = leaflet::pathOptions(pane = "points"), # Affiche la station au-dessus
-          popup = ~paste0( # Petite etiquette
+          options = leaflet::pathOptions(pane = "points"), # Affiche au-dessus
+          popup = ~paste0(
             "<b>", libelle_station, "</b><br/>",
             "Code station : ", code_station, "<br/>",
             "Cours d'eau : ", libelle_cours_eau, "<br/>",
-            "Département : ", code_dep ) ) %>%
-        leaflet::setView( # Centre la carte sur la station choisie
+            "Département : ", code_dep)) |>
+        leaflet::setView(
           lng = coords[1, 1],
           lat = coords[1, 2],
-          zoom = 12 ) %>%
-        leaflet::clearPopups() %>% # Ferme les anciens popups ouverts
-        leaflet::addPopups( # Ouvre un popup sur la station sélectionnée
+          zoom = 12) |>
+        leaflet::addPopups(
           lng = coords[1, 1],
           lat = coords[1, 2],
-          popup = paste0( # Petite etiquette
+          popup = paste0(
             "<b>", station_choisie$libelle_station, "</b><br/>",
             "Code station : ", station_choisie$code_station, "<br/>",
             "Cours d'eau : ", station_choisie$libelle_cours_eau, "<br/>",
-            "Département : ", station_choisie$code_dep ) ) },
-      ignoreNULL = TRUE) # Ne se déclenche pas au démarrage
+            "Département : ", station_choisie$code_dep))
+    }, ignoreNULL = TRUE)
 
-    return(shiny::reactive(station_selectionnee())) # Renvoie le code de la station selcetionnée
+    return(shiny::reactive(station_selectionnee())) # Renvoie le code de la station sélectionnée
   } ) }
 
 ## À appeler dans l'UI

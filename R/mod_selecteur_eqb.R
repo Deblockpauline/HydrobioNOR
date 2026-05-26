@@ -6,7 +6,7 @@
 mod_selecteur_eqb_ui <- function(id) {
   ns <- shiny::NS(id)
   shiny::tagList(
-    shiny::selectInput(
+    shiny::selectizeInput(
       inputId = ns("eqb"), # Definition NS
       label = "Élément de qualité biologique",
       choices = c( # Liste definie en avance car on connait les EQB
@@ -15,7 +15,8 @@ mod_selecteur_eqb_ui <- function(id) {
         "Macroinvertébrés",
         "Macrophytes",
         "Poissons" ),
-      selected = "Tous") ) } # Par defaut
+      selected = "Tous",
+      multiple=TRUE) ) } # Par defaut
 
 #' Module server du sélecteur EQB
 #'

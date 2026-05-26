@@ -26,7 +26,6 @@ app_ui <- function(request) { # Fonction qui définit l'interface utilisateur
         body, button, input, select, textarea {
           font-family: 'Marianne', Arial, sans-serif; }"))), # Ordre d'utilisation
 
-
     # Ligne du haut avec le titre a gauche et le logo a droite
     shiny::fluidRow(
       shiny::column(
@@ -45,19 +44,22 @@ app_ui <- function(request) { # Fonction qui définit l'interface utilisateur
         width = 12,
         mod_load_data_ui("donnees") ) ),
 
-    # Organisation de la page en panneau latéral + panneau principal
+
+# Organisation de la page en panneau latéral + panneau principal
     shiny::sidebarLayout(
 
-      # Panneau latéral contenant les filtres
+# Panneau latéral contenant les filtres
       shiny::sidebarPanel(
         width = 2, # Largeur du panneau de filtres
         style = "padding: 10px;", # Espace intérieur
         shiny::tags$h5("Filtres"), # Titre de la zone de filtres
         mod_selecteur_dep_ui("departements"),
         mod_selecteur_eqb_ui("eqb"),
-        mod_selecteur_UH_ui("uh")),
+        mod_selecteur_UH_ui("uh"),
+        mod_selecteur_reseau_ui("reseau"),
+        mod_selecteur_qualification_ui("qualification")),
 
-      # Panneau principal contenant les onglets de l'application
+# Panneau principal contenant les onglets de l'application
       shiny::mainPanel(
         width = 10, # Zone principale plus large pour afficher les résultats
         shiny::tabsetPanel(

@@ -108,12 +108,12 @@ mod_station_contexte_env_bv_server <- function(id, donnees, station_selectionnee
   shiny::moduleServer(id, function(input, output, session) { # Lance la partie server du module
 
     # Message simple si aucune station n'est encore sélectionnée
-    output$message_selection_station <- shiny::renderUI({
+    output$message_selection_station <- shiny::renderUI( {
       if (is.null(station_selectionnee()) || station_selectionnee() == "") {
         shiny::div(
           style = "color: #666; font-style: italic;",
           "Veuillez sélectionner une station sur la carte pour afficher le contexte environnemental.")
-      } else {NULL } })
+      } else {NULL } } )
 
 # Preparation des réactives
 
@@ -185,7 +185,7 @@ mod_station_contexte_env_bv_server <- function(id, donnees, station_selectionnee
             height = 700, # Hauteur du fichier exporté
             width = 1100, # Largeur du fichier exporté
             scale = 1 ) ) # Résolution
-    })
+    } )
 
     # Tableau récapitulatif affiché sous le graphique
     output$table_occupation_bv <- DT::renderDT({ # Ce qui s'affiche dans DTOutput(ns("table_occupation_bv"))
@@ -288,7 +288,7 @@ mod_station_contexte_env_bv_server <- function(id, donnees, station_selectionnee
             height = 700, # Hauteur du fichier exporté
             width = 1100, # Largeur du fichier exporté
             scale = 1 ) ) # Résolution
-    })
+    } )
 
     # Tableau détaillé du camembert affiché sous le graphique
     output$table_occupation_bv_detail <- DT::renderDT({ # Ce qui s'affiche dans DTOutput(ns("table_occupation_bv_detail"))
@@ -389,7 +389,6 @@ mod_station_contexte_env_bv_server <- function(id, donnees, station_selectionnee
           row.names = FALSE, # N'exporte pas les numéros de ligne
           fileEncoding = "UTF-8" ) # Encodage du fichier
       } )
-
   } )
 }
 

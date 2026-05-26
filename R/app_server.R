@@ -14,12 +14,12 @@ app_server <- function(input, output, session) {
 
   # Sélecteur département
   choix_departements <- mod_selecteur_dep_server(
-    id = "departements", # Utilise les données chargées pour proposer les départements
-    donnees = donnees) # Renvoie le ou les départements choisis par l'utilisateur
+    id = "departements", # Id du module
+    donnees = donnees)
 
   # Sélecteur compartiment biologique
   choix_eqb <- mod_selecteur_eqb_server(
-    id = "eqb") # Renvoie le compartiment biologique choisi
+    id = "eqb")
 
   # Sélecteur UH
   choix_uh <- mod_selecteur_UH_server(
@@ -27,13 +27,25 @@ app_server <- function(input, output, session) {
     stations = shiny::reactive(donnees()$stations), # On transmet uniquement la table stations car la variable UH s'y trouve
     choix_departements = choix_departements ) # Reactive contenant les départements sélectionnés
 
+  # Sélecteur réseau
+  choix_reseau <- mod_selecteur_reseau_server(
+    id = "reseau",
+    donnees = donnees)
+
+  # Sélecteur qualification
+  choix_qualification <- mod_selecteur_qualification_server(
+    id = "qualification",
+    donnees = donnees)
+
   # Carte des stations dans l'onglet Station
   station_selectionnee <- mod_station_carte_server(
     id = "station_carte",
-    donnees = donnees, # On récupère les données de l'application
+    donnees = donnees,
     choix_departements = choix_departements, # On applique les filtres sélectionnés
     choix_eqb = choix_eqb,
-    choix_uh = choix_uh) # Renvoie la station sélectionnée par clic sur la carte ou dans la liste
+    choix_uh = choix_uh,
+    choix_reseau = choix_reseau,
+    choix_qualification = choix_qualification) # Renvoie la station sélectionnée par clic sur la carte ou dans la liste
 
   # Informations générales de la station sélectionnée
   mod_station_infos_server(
@@ -59,27 +71,36 @@ app_server <- function(input, output, session) {
     donnees = donnees, # On récupère les mêmes données
     choix_departements = choix_departements, # On applique les mêmes filtres globaux
     choix_eqb = choix_eqb,
-    choix_uh = choix_uh) # Renvoie la station sélectionnée dans l'onglet Communautés
+    choix_uh = choix_uh,
+    choix_reseau = choix_reseau,
+    choix_qualification = choix_qualification) # Renvoie la station sélectionnée dans l'onglet Communautés
 
   # Afficher le graph de la repartition des stations selon la classe/le cycle DCE et le compartiemnt bio
   mod_hist_qualite_server(
     id = "hist_qualite_commu",
     donnees = donnees,
-    choix_departements = choix_departements,
+    choix_departements = choix_departements, # Application des filtres
     choix_eqb = choix_eqb,
-    choix_uh = choix_uh)
+    choix_uh = choix_uh,
+    choix_reseau = choix_reseau,
+    choix_qualification = choix_qualification)
 
   #Afficher les graph des indices et des metriques
   mod_communaute_indices_server(
     id = "communaute_indices",
     donnees = donnees,
-    station_selectionnee = station_selectionnee_commu )
+    station_selectionnee = station_selectionnee_commu,
+    choix_qualification = choix_qualification,
+    choix_eqb = choix_eqb)
 
-  # Afficher le graph des taxons par station
+  #Afficher repartition taxon par station
   mod_communaute_taxons_server(
     id = "taxons",
     donnees = donnees,
-    station_selectionnee = station_selectionnee_commu)
+    station_selectionnee = station_selectionnee_commu,
+    choix_eqb = choix_eqb,
+    choix_reseau = choix_reseau,
+    choix_qualification = choix_qualification)
 
   # Carte de répartition des taxons
   mod_repartition_carte_server(
@@ -87,5 +108,7 @@ app_server <- function(input, output, session) {
     donnees = donnees,
     choix_departements = choix_departements,
     choix_eqb = choix_eqb,
-    choix_uh = choix_uh )
+    choix_uh = choix_uh,
+    choix_reseau = choix_reseau,
+    choix_qualification = choix_qualification)
 }

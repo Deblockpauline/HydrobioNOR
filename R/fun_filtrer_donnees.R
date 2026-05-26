@@ -7,17 +7,18 @@
 #' @description
 #' Cette fonction filtre la table des stations selon  le département ou l'UH
 #' Le filtre EQB est géré directement dans le module de carte à partir d'une table annexe
-#'
 #' @param station Table des stations
 #' @param choix_departement Département sélectionné
 #' @param choix_uh Unité hydrographique sélectionnée
+#' @param choix_reseau Reseau séléctionné
 #' @return une table des stations filtrées
 #' @export
 
-filtrer_stations <- function(station, # Creation de la fonction
+filtrer_stations <- function(station, # Creation de la fonction avec les filtres
                              choix_departement = "Tous",
-                             choix_uh = "Toutes") {
-  station_filtree <- station # Initialisation : on travaille sur une copie de la table
+                             choix_uh = "Toutes",
+                             choix_reseau ="Tous") {
+  station_filtree <- station # Copie de la table
 
   # Filtre département
   # && = "ET" → toutes les conditions doivent être vraies
@@ -29,8 +30,7 @@ filtrer_stations <- function(station, # Creation de la fonction
       station_filtree,
       code_dep %in% choix_departement)}
 
-  # Filtre UH
-  # Même logique que pour le département
+  # Filtre UH = même logique que pour le département
   if (!is.null(choix_uh) &&
       length(choix_uh) > 0 &&
       !("Toutes" %in% choix_uh) &&
@@ -39,46 +39,77 @@ filtrer_stations <- function(station, # Creation de la fonction
       station_filtree,
       UH_calculee %in% choix_uh) }
 
+  # Filtre reseau, meme logique mais attention séparateur différent
+  if (!is.null(choix_reseau) &&
+      length(choix_reseau) > 0 &&
+      !("Tous" %in% choix_reseau) &&
+      "reseau" %in% names(station_filtree)) {
+    station_filtree <- dplyr::filter(
+      station_filtree,
+      stringr::str_detect( # Recherche
+        reseau, # Dans la colonne reseau, les réseaux avec des séparateur - /
+        paste0("(^|[-/])", paste(choix_reseau, collapse = "|"), "($|[-/])") ) ) }
+
   return(station_filtree) } # Retour du résultat final
 
 #' 2) Filtrer une table selon les filtres globaux
-#' @description
-#' Cette fonction filtre une table de données selon le départements et l'EQB sélectionnés
+#'
+#' @description Cette fonction filtre une table de données selon le départements et l'EQB sélectionnés
 #' Pas de filtre UH ici car toutes les tables ne contiennent pas cette variable
 #' @param data Table à filtrer ( nom générique)
 #' @param choix_departements Département sélectionné
 #' @param choix_eqb EQB sélectionné
+#' @param choix_reseau Reseau selectionné
+#' @param choix_qualification Qualification selectionnée
 #' @return La table filtrée
 #' @export
 
 filtrer_donnees <- function(data,
                             choix_departements = NULL,
-                            choix_eqb = NULL) {
+                            choix_eqb = NULL,
+                            choix_qualification = NULL,
+                            choix_reseau = NULL) {
   data_filtree <- data # Création d'une copie
 
-  # Filtre département (meme condition que Fonction 1)
-  if (!is.null(choix_departements) &&
-      length(choix_departements) > 0 &&
-      !("Tous" %in% choix_departements) &&
-      "code_dep" %in% names(data_filtree)) {
-    data_filtree <- dplyr::filter( # Filtrage sur le département
+  # Filtre département
+  if (!is.null(choix_departements) && # Verifie qu'un choix existe
+      length(choix_departements) > 0 && # Au moins une valeur
+      !("Tous" %in% choix_departements) && # Verifie que tous n'est pas selectionné
+      "code_dep" %in% names(data_filtree)) { # Verifie la presence de colonne
+    data_filtree <- dplyr::filter( # Filtre selon le choix
       data_filtree,
-      code_dep %in% choix_departements)}
+      code_dep %in% choix_departements) }
 
-  # Filtre EQB (meme cond. que Fonction 1)
-  # Ici differents cas selon le libelle de la colonnne voulue
+  # Filtre EQB, meme logique
   if (!is.null(choix_eqb) &&
       length(choix_eqb) > 0 &&
-      !("Tous" %in% choix_eqb)) {
+      !("Tous" %in% choix_eqb) &&
+      "libelle_support" %in% names(data_filtree)) {
+    data_filtree <- dplyr::filter(
+      data_filtree,
+      libelle_support %in% choix_eqb) }
 
-    # La table possede une colonne "libelle_support"
-    if ("libelle_support" %in% names(data_filtree)) {
-      data_filtree <- dplyr::filter(
-        data_filtree,
-        libelle_support %in% choix_eqb)}
+  # Filtre qualification, meme logique
+  if (!is.null(choix_qualification) &&
+      length(choix_qualification) > 0 &&
+      !("Toutes" %in% choix_qualification) &&
+      "libelle_qualification" %in% names(data_filtree)) {
+    data_filtree <- dplyr::filter(
+      data_filtree,
+      libelle_qualification %in% choix_qualification) }
 
-   return(data_filtree) } # Retour de la table filtrée
-}
+  # Filtre réseau, meme logique mais attention au séparateur
+  if (!is.null(choix_reseau) &&
+      length(choix_reseau) > 0 &&
+      !("Tous" %in% choix_reseau) &&
+      "reseau" %in% names(data_filtree)) {
+    data_filtree <- dplyr::filter(
+      data_filtree,
+      stringr::str_detect(
+        reseau,
+        paste0("(^|[-/])", paste(choix_reseau, collapse = "|"), "($|[-/])") ) ) }
+
+  return(data_filtree) } # Retour de la table filtrée
 
 #' 3) Filtrer une table selon la station sélectionnée
 #' @param data Table contenant une colonne `code_station`

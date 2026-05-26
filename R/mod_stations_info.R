@@ -93,6 +93,10 @@ mod_station_infos_server <- function(id, donnees, station_selectionnee) {
             valeur_si_existe("code_dep") ),
 
           shiny::tags$li(
+            shiny::strong("Réseau d'appartenance : "),
+            valeur_si_existe("reseau") ),
+
+          shiny::tags$li(
             shiny::strong("Coordonnée X : "),
             valeur_si_existe("coordonnee_x") ),
 

@@ -6,11 +6,12 @@
 mod_selecteur_dep_ui <- function(id) {
   ns <- shiny::NS(id)
   shiny::tagList( # Menu déroulant pour choisir un département
-    shiny::selectInput(
+    shiny::selectizeInput(
       inputId = ns("departement"),
       label = "Département", # Nom
       choices = "Tous", # Initialisé avec tous
-      selected = "Tous" ) ) } # Tous par defaut
+      selected = "Tous",
+      multiple = TRUE) ) } # Tous par defaut
 
 #' Module server du sélecteur de département
 #'
@@ -33,13 +34,12 @@ mod_selecteur_dep_server <- function(id, donnees) {
         unique() |> # Enleve les doublons
         sort() # Trie
 
-      shiny::updateSelectInput( # Mise à jour du selectInput avec les départements
+      shiny::updateSelectizeInput( # Mise à jour du selectInput avec les départements
         session = session,
         inputId = "departement", # Defini dans le ui
         choices = c("Tous", liste_departements),# Tous et ceux trouvé
-        selected = "Tous")
-    } )
-    return(shiny::reactive(input$departement)) # Renvoie le dep séléctionné en réactive
+        selected = "Tous") } )
+    return(shiny::reactive(input$departement) ) # Renvoie le dep séléctionné en réactive
   } ) }
 
 ## À appeler dans l'UI

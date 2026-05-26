@@ -6,11 +6,12 @@
 mod_selecteur_UH_ui <- function(id) {
   ns <- shiny::NS(id) # Permet de créer un namespace pour éviter les conflits d'ID
   shiny::tagList(
-    shiny::selectInput(
+    shiny::selectizeInput(
       inputId = ns("uh"), # ID du champ
       label = "Unité hydrographique", # Texte affiché
       choices = NULL, # Les choix seront définis côté serveur
-      selected = "Toutes") ) } # Valeur par défaut
+      selected = "Toutes",
+      multiple = TRUE) ) } # Valeur par défaut
 
 #' Module server du sélecteur d'unité hydrographique
 #'
@@ -23,6 +24,8 @@ library(dplyr)
 mod_selecteur_UH_server <- function(id, stations, choix_departements) {
   shiny::moduleServer(id, function(input, output, session) {
     shiny::observe({ # Bloc réactif exécuté dès que stations ou département change
+      shiny::req(stations())
+      shiny::req(!is.null(stations()))
       df <- stations() # Table des stations
 
       # Filtre selon le département sélectionné
@@ -43,11 +46,12 @@ mod_selecteur_UH_server <- function(id, stations, choix_departements) {
       choix_uh <- choix_uh[!is.na(choix_uh) & choix_uh != ""] # Nettoyage des valeurs
 
       # Mise à jour dynamique du menu déroulant
-      shiny::updateSelectInput(
+      shiny::updateSelectizeInput(
         session = session,
         inputId = "uh",
         choices = c("Toutes", choix_uh), # UH du département choisi
-        selected = "Toutes") # Remet à Toutes
+        selected = "Toutes",
+        server = TRUE) # Remet à Toutes
     } )
 
     return(shiny::reactive(input$uh) ) # Réactive retrounée contennant l'UH selectionnée
