@@ -783,7 +783,6 @@ plan_inv_phases <- lire_plans(
   motif = "^PHASES_INV_.*\\.xlsx$",
   eqb_nom = "Macroinvertébrés")
 
-
 #### Table pour les cartes#######
 # Table donnee_carte: Résumé taxons par station
 resume_taxons_station <- taxons %>%
@@ -1218,6 +1217,10 @@ save( stations,
       diagnostic_inv,
       entree_diat,
       diagnostic_diat,
+      plan_diatomees,
+      plan_inv_facies,
+      plan_inv_phases,
+      plan_macrophytes,
       metriques,
       occupation_2018,
       occupation_2012,
