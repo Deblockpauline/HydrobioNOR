@@ -102,6 +102,13 @@ app_server <- function(input, output, session) {
     choix_reseau = choix_reseau,
     choix_qualification = choix_qualification)
 
+  # Pour le diag
+  mod_communaute_diagnostic_eco_server(
+    id = "diagnostic_eco",
+    donnees = donnees,
+    station_selectionnee = station_selectionnee_commu,
+    choix_eqb = choix_eqb)
+
   # Carte de répartition des taxons
   mod_repartition_carte_server(
     id = "repartition_carte",

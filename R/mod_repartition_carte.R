@@ -8,7 +8,7 @@ mod_repartition_carte_ui <- function(id, hauteur = "700px") { # Fonction UI du m
   ns <- shiny::NS(id) # Namespace du module
   shiny::tagList( # Regroupe les éléments UI
 
-    shiny::selectizeInput( # Liste déroulante
+    shiny::selectizeInput( # Liste déroulanter
       inputId = ns("taxon_selectionne"), # ID du ou des taxons choisis
       label = "Choisir un ou plusieurs taxons", # Texte affiché au-dessus
       choices = NULL, # Choix ajoutés côté serveur

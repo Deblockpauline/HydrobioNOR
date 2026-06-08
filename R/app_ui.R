@@ -140,7 +140,7 @@ app_ui <- function(request) { # Fonction qui définit l'interface utilisateur
                   shiny::tabPanel(
                     title = "Diagnostic",
                     shiny::br(),
-                    shiny::p("À venir Version 6") ),
+                    mod_communaute_diagnostic_eco_ui("diagnostic_eco") ),
 
                   # 5e sous-onglet : Plan d'échantillonnage
                   shiny::tabPanel(
