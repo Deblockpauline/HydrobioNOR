@@ -1,6 +1,7 @@
 #### Packages ####
 library(hubeau)# Package pour la recup des données
 library(shiny)
+library(readxl) # Pour ouvrir les excels contenant les données
 library(dplyr) # Package pour le traitement
 library(purrr) # Permet de remplacer des boucles for
 library(lubridate) # Permet de filter les années par la suite
@@ -8,6 +9,7 @@ library(stringr) # Travailler proprement avec les chaînes de caractères
 library(tidyr) # Pour la mise en forme des données
 library(sf) # Manipuler des données géographiques (cartes)
 library(SEEEapi) #Permet de calculer les indices et le diag
+devtools::load_all(".") # Charge les packages et fonctions locales
 # |> = prends ca et passe-le à la fonction
 # %>% = meme chose mais + souple et issue de dplyr et . =place l'object
 
@@ -239,32 +241,38 @@ indices <- indices %>%
 # On a toutes les informations necessaires pour la suite , comme dans IDF on va creer notre jeu de données etat_bio contenant l'EQR calculé
 
 #### Table etat_bio ####
-# Harmonisation des types = bons formats (texte / numérique) pour éviter les erreurs plus loin
+# Harmonisation des types
 indices <- indices %>%
-  dplyr::mutate(
-    code_station = as.character(code_station),
-    code_indice = as.numeric(code_indice),
-    annee = as.numeric(annee))
+  dplyr::mutate( # Modif les colonnes
+    code_station = as.character(code_station), # Code station en texte
+    code_indice = as.numeric(code_indice), # Code indice en numérique
+    annee = as.numeric(annee) ) # Année en numérique
 
-# On garde uniquement les stations avec une typologie renseignée (indispensable pour SEEE)
-stations_valides <- stations %>%
-  sf::st_drop_geometry() %>% # On enlève la géométrie (inutile ici)
-  dplyr::transmute(
-    code_station = as.character(code_station),
-    typologie = stringr::str_trim(as.character(typologie))) %>% # Nettoyage des espaces
-  dplyr::filter(!is.na(typologie), typologie != "") # On enlève les stations sans typologie
+codes_etat_bio <- c(1022, 5856, 7613, 5910, 7036, 2928) # Codes d'indices
 
-# Codes d'indices (pas les métriques ici)
-codes_etat_bio <- c(1022, 5856, 7613, 5910, 7036, 2928)
+# Typologie des stations
+stations_typologie <- stations %>% # On part de stations
+  sf::st_drop_geometry() %>% # Sans géométrie
+  dplyr::transmute( # Garde seulement certaines colonnes en transformant :
+    code_station = as.character(code_station), # Code station en charactere
+    typologie = stringr::str_trim(as.character(typologie)) ) # Typologie nettoyée
 
-# Création de la table d'indices utile pour l'état bio
-indices_etat_bio <- indices %>%
-  dplyr::filter(code_indice %in% codes_etat_bio) %>%
-  dplyr::inner_join(stations_valides, by = "code_station") %>%
-  dplyr::mutate(
-    code_qualification = as.character(code_qualification),
-    libelle_qualification = as.character(libelle_qualification),
-    libelle_indice = dplyr::case_when(
+# Stations avec typologie
+stations_valides <- stations_typologie %>% # Reorend la table precedente
+  dplyr::filter(
+    !is.na(typologie),
+    typologie != "" ) # Stations utilisables pour SEEE
+
+# Tous les indices utiles, avec ou sans typologie
+indices_etat_bio_all <- indices %>% # On part de tout les indices
+  dplyr::filter(code_indice %in% codes_etat_bio) %>% # Indices gardés
+  dplyr::left_join( # Garde meme ceux sans typo
+    stations_typologie,
+    by = "code_station" ) %>% # Ajout typologie
+  dplyr::mutate( # Modif les colonne
+    code_qualification = as.character(code_qualification), # Code qualif en texte
+    libelle_qualification = as.character(libelle_qualification), # Libellé qualif
+    libelle_indice = dplyr::case_when( # Reprogrammation des indices
       code_indice == 5856 ~ "IBD",
       code_indice == 7613 ~ "I2M2",
       code_indice == 5910 ~ "IBG équivalent",
@@ -273,172 +281,234 @@ indices_etat_bio <- indices %>%
       code_indice == 1022 ~ "IPS",
       TRUE ~ libelle_indice ) )
 
-# Table de qualification par station / année / indice -> evite les doublons au moment du left_join
-qualif_indices <- indices_etat_bio %>%
+indices_etat_bio <- indices_etat_bio_all %>%
+  dplyr::filter( # Garde ceux uniquement avec de la typo = calcul SEEE
+    !is.na(typologie),
+    typologie != "" )
+indices_sans_typologie <- indices_etat_bio_all %>%
+  dplyr::filter( # Garde uniquement ceux sans typo pour les ajouter apres
+    is.na(typologie) |
+      typologie == "" )
+
+# Qualification par station / année / indice
+qualif_indices <- indices_etat_bio_all %>% # Repars de tout les indices utiles
   dplyr::mutate(
-    annee = lubridate::year(as.Date(date_prelevement))) %>%
-  dplyr::arrange(
+    annee = lubridate::year(as.Date(date_prelevement)) ) %>% # Creer l'année
+  dplyr::arrange( # Tri
     code_station,
     annee,
     code_indice,
-    code_qualification) %>%
-  dplyr::group_by(
+    code_qualification ) %>%
+  dplyr::group_by( # Groupes par station, année et indice
     code_station,
     annee,
-    code_indice) %>%
-  dplyr::slice(1) %>% # 1 qualification gardée par station / année / indice
-  dplyr::ungroup() %>%
-  dplyr::select(
+    code_indice ) %>%
+  dplyr::slice(1) %>% # Une seule qualification
+  dplyr::ungroup() %>% # Dégroupement
+  dplyr::select( # Garde seulement ca
     code_station,
     annee,
     code_indice,
     code_qualification,
-    libelle_qualification)
+    libelle_qualification )
 
-# Préparation des stations pour SEEE
-stations_seee <- indices_etat_bio %>%
-  dplyr::transmute(
+# Stations au format SEEE
+stations_seee <- indices_etat_bio %>% # tables avec des indices et une typo
+  dplyr::transmute( # Création de la table au format attendu
     CODE_STATION = as.character(code_station),
     TYPO_NATIONALE = typologie,
     TG_BV = dplyr::if_else(
-      stringr::str_detect(stringr::str_to_upper(typologie), "TG"),
-      "OUI",
-      "NON" ), # Indique si la typologie contient TG
-    ANNEE = lubridate::year(as.Date(date_prelevement))) %>%
-  dplyr::filter(!is.na(ANNEE)) %>% # On enlève les années non exploitables
-  dplyr::distinct(CODE_STATION, TYPO_NATIONALE, TG_BV, ANNEE) %>% # 1 ligne par station / année
-  dplyr::transmute(
+      stringr::str_detect(
+        stringr::str_to_upper(typologie),
+        "TG" ),
+      "OUI", # Oui ou non si TG
+      "NON" ),
+    ANNEE = lubridate::year(as.Date(date_prelevement)) ) %>%
+  dplyr::filter(!is.na(ANNEE)) %>% # Retire les lignes sans années
+  dplyr::distinct( # Garde une seule ligne par station / typologie / année
+    CODE_STATION,
+    TYPO_NATIONALE,
+    TG_BV,
+    ANNEE ) %>%
+  dplyr::transmute( # Renome en debut et fin
     CODE_STATION,
     TYPO_NATIONALE,
     TG_BV,
     PERIODE_DEBUT = ANNEE,
     PERIODE_FIN = ANNEE )
 
-# Préparation des indices au format attendu par SEEE
-indices_seee <- indices_etat_bio %>%
-  dplyr::transmute(
+# Indices au format SEEE
+indices_seee <- indices_etat_bio %>% # Meme chose pour les indices
+  dplyr::transmute( # Pour le format
     CODE_OPERATION = code_prelevement,
-    CODE_STATION   = as.character(code_station),
-    DATE           = format(as.Date(date_prelevement), "%d/%m/%Y"),
-    CODE_PAR       = as.character(code_indice),
-    LIB_PAR        = libelle_indice,
-    RESULTAT       = resultat_indice ) %>%
-  dplyr::filter(
+    CODE_STATION = as.character(code_station),
+    DATE = format(as.Date(date_prelevement), "%d/%m/%Y"),
+    CODE_PAR = as.character(code_indice),
+    LIB_PAR = libelle_indice,
+    RESULTAT = resultat_indice ) %>%
+  dplyr::filter( # Enleve les lignes incomplete
     !is.na(CODE_OPERATION),
     !is.na(CODE_STATION),
     !is.na(DATE),
     !is.na(CODE_PAR),
-    !is.na(RESULTAT) ) # On enlève les lignes incomplètes
+    !is.na(RESULTAT) )
 
-# Ajout du paramètre ALT pour l'IPR
-# Obligatoire pour que SEEE calcule correctement
+# Paramètre ALT pour IPR
 alt_ipr <- indices_etat_bio %>%
-  dplyr::filter(code_indice == 7036) %>% # On cible uniquement l'IPR
-  dplyr::transmute(
+  dplyr::filter(code_indice == 7036) %>% # IPR seulement
+  dplyr::transmute( # Format attendu
     CODE_OPERATION = code_prelevement,
-    CODE_STATION   = as.character(code_station),
-    DATE           = format(as.Date(date_prelevement), "%d/%m/%Y")) %>%
-  dplyr::distinct() %>% # Une ligne par opération
-  dplyr::mutate(
+    CODE_STATION = as.character(code_station),
+    DATE = format(as.Date(date_prelevement), "%d/%m/%Y") ) %>%
+  dplyr::distinct() %>% # Retire les doublons
+  dplyr::mutate( # Ajoute ALT 200 car n'influence pas ( voir IDF script)
     CODE_PAR = "NA",
-    LIB_PAR  = "ALT",
-    RESULTAT = 200) # 200 = valeur par defaut, n'influence pas
+    LIB_PAR = "ALT",
+    RESULTAT = 200 )
 
-# On ajoute les lignes ALT dans la table SEEE
-indices_seee <- dplyr::bind_rows(indices_seee, alt_ipr)
+indices_seee <- dplyr::bind_rows(indices_seee,alt_ipr ) # Ajout ALT a la table
 
-# Création des sous-tables par compartiment biologique
-indices_diat <- indices_seee %>%
+# Sous-table des indices
+indices_diat <- indices_seee %>% # Diat
   dplyr::filter(CODE_PAR == "5856")
-indices_macro <- indices_seee %>%
+indices_macro <- indices_seee %>% # Macrophypte
   dplyr::filter(CODE_PAR == "2928")
-indices_invert <- indices_seee %>%
+indices_invert <- indices_seee %>% # MIV
   dplyr::filter(CODE_PAR == "7613")
-
-# Important : pour le poisson on garde IPR + ALT
-indices_poisson <- indices_seee %>%
+indices_poisson <- indices_seee %>% # Poissons
   dplyr::filter(CODE_PAR %in% c("NA", "7036")) %>%
-  dplyr::arrange(CODE_STATION, CODE_OPERATION, CODE_PAR)
+  dplyr::arrange(
+    CODE_STATION,
+    CODE_OPERATION,
+    CODE_PAR )
 
-as.tbl <- tibble::as_tibble # Fonction neccessaire pour le script
+as.tbl <- tibble::as_tibble # Fonction nécessaire pour SEEE car pas la bonne version
 
-# Calcul SEEE 2018 (IBD, IBMR, I2M2, IPR)
+# Calcul SEEE 2018
 etat_2018 <- SEEEapi::calc_indic(
   indic = "EBio_CE_2018",
   version = "1.0.2",
   locally = TRUE,
-  dir_algo = "algo_seee",
-  data = list(
+  dir_algo = "algo_SEEE",
+  data = list( # Liste des tables
     stations_seee,
     indices_diat,
     indices_macro,
     indices_invert,
-    indices_poisson))$result
+    indices_poisson ))$result
 
-# Calcul SEEE 2015 pour l'IBG équivalent
+# Calcul SEEE 2015
 etat_2015 <- SEEEapi::calc_indic(
   indic = "EBio_CE_2015",
   version = "1.0.1",
   locally = TRUE,
-  dir_algo = "algo_seee",
+  dir_algo = "algo_SEEE",
   data = list(
     stations_seee,
     indices_seee %>% dplyr::slice(0),
     indices_seee %>% dplyr::slice(0),
-    indices_seee %>% dplyr::filter(CODE_PAR == "5910"),
-    indices_seee %>% dplyr::slice(0)))$result
+    indices_seee %>% dplyr::filter(CODE_PAR == "5910"), # Seulement IBG EQ
+    indices_seee %>% dplyr::slice(0) ))$result
 
-# Construction de la table finale etat_bio
-# On garde les résultats et la classe renvoyée par SEEE (même si EQR est vide)
-etat_bio <- dplyr::bind_rows(etat_2018, etat_2015) %>%
-  dplyr::filter(!is.na(RESULTAT)) %>%
-  dplyr::transmute(
-    code_station    = as.character(CODE_STATION),
-    annee           = as.numeric(PERIODE_DEBUT),
-    code_indice     = suppressWarnings(as.numeric(as.character(CODE_PAR))),
-    libelle_indice  = as.character(LIB_PAR),
+# Construction etat_bio
+etat_bio <- dplyr::bind_rows(
+  etat_2018, # Fusionne les resultats
+  etat_2015 ) %>%
+  dplyr::filter(!is.na(RESULTAT)) %>% # Retire les NA
+  dplyr::transmute( # Reconsrtuit un etable propre avec les bons noms
+    code_station = as.character(CODE_STATION),
+    annee = as.numeric(PERIODE_DEBUT),
+    code_indice = suppressWarnings(as.numeric(as.character(CODE_PAR))),
+    libelle_indice = as.character(LIB_PAR),
     resultat_indice = as.numeric(gsub(",", ".", as.character(RESULTAT))),
-    eqr_indice      = as.numeric(gsub(",", ".", as.character(EQR))),
-    classe_indice   = dplyr::na_if(as.character(CLASSE), "") ) %>%
-  dplyr::left_join(
-    indices_etat_bio %>%
-      dplyr::distinct(code_indice, code_support, libelle_support),
+    eqr_indice = as.numeric(gsub(",", ".", as.character(EQR))),
+    classe_indice = dplyr::na_if(as.character(CLASSE), "") ) %>%
+  dplyr::left_join( # Ajout du support
+    indices_etat_bio_all %>%
+      dplyr::distinct(
+        code_indice,
+        code_support,
+        libelle_support ),
     by = "code_indice" ) %>%
-  dplyr::left_join(
+  dplyr::left_join( # Ajout de la qualif
     qualif_indices,
-    by = c("code_station", "annee", "code_indice") ) %>%
-  dplyr::mutate(
+    by = c(
+      "code_station",
+      "annee",
+      "code_indice" ) ) %>%
+  dplyr::mutate( # Nettoyage des noms
     libelle_indice = dplyr::case_when(
       code_indice == 5856 ~ "IBD",
       code_indice == 7613 ~ "I2M2",
       code_indice == 5910 ~ "IBG équivalent",
       code_indice == 7036 ~ "IPR",
       code_indice == 2928 ~ "IBMR",
-      TRUE ~ libelle_indice)) %>%
-  dplyr::distinct() %>%
-  dplyr::arrange(code_station, annee, code_indice)
+      TRUE ~ libelle_indice ) ) %>%
+  dplyr::distinct() %>% # Enleve les doublons
+  dplyr::arrange( # Tri
+    code_station,
+    annee,
+    code_indice )
 
-# On prend seulement l'IPS
-ips_info <- indices_etat_bio %>%
-  dplyr::filter(code_indice == 1022) %>%
-  dplyr::transmute(
-    code_station    = as.character(code_station),
-    annee           = lubridate::year(as.Date(date_prelevement)),
-    code_indice     = 1022,
-    libelle_indice  = "IPS",
+# Indices sans typologie
+indices_sans_typologie_info <- indices_sans_typologie %>% # On part des indices qui n'ont pas de typo, donc pas calculé
+  dplyr::filter(code_indice != 1022) %>% # IPS ajouté après
+  dplyr::transmute( # Construction au meme format que etat_bio
+    code_station = as.character(code_station),
+    annee = lubridate::year(as.Date(date_prelevement)),
+    code_indice = as.numeric(code_indice),
+    libelle_indice = libelle_indice,
     resultat_indice = as.numeric(resultat_indice),
-    eqr_indice      = NA_real_,
-    classe_indice   = NA_character_,
+    eqr_indice = NA_real_, # Valeur vide car pas de calcule
+    classe_indice = NA_character_,
     code_support,
     libelle_support,
     code_qualification,
-    libelle_qualification) %>%
+    libelle_qualification ) %>%
+  dplyr::filter( # Garde les lignes valables pour la suite
+    !is.na(annee),
+    !is.na(resultat_indice) ) %>%
+  dplyr::distinct() # Enleve les doublons
+
+# Ajout des indices sans typologie
+etat_bio <- dplyr::bind_rows(
+  etat_bio,
+  indices_sans_typologie_info ) %>%
+  dplyr::distinct() %>%
+  dplyr::arrange(
+    code_station,
+    annee,
+    code_indice )
+
+# IPS ajouté sans SEEE
+ips_info <- indices_etat_bio_all %>%
+  dplyr::filter(code_indice == 1022) %>%
+  dplyr::transmute( # Meme format
+    code_station = as.character(code_station),
+    annee = lubridate::year(as.Date(date_prelevement)),
+    code_indice = 1022,
+    libelle_indice = "IPS",
+    resultat_indice = as.numeric(resultat_indice),
+    eqr_indice = NA_real_,
+    classe_indice = NA_character_,
+    code_support,
+    libelle_support,
+    code_qualification,
+    libelle_qualification ) %>%
+  dplyr::filter(
+    !is.na(annee),
+    !is.na(resultat_indice) ) %>%
   dplyr::distinct()
 
-# Ajout de l'IPS dans la table finale
-etat_bio <- dplyr::bind_rows(etat_bio, ips_info) %>%
+# Ajout IPS
+etat_bio <- dplyr::bind_rows(
+  etat_bio,
+  ips_info ) %>%
   dplyr::distinct() %>%
-  dplyr::arrange(code_station, annee, code_indice)
+  dplyr::arrange(
+    code_station,
+    annee,
+    code_indice )
 
 #### Table pour les metriques ####
 metriques <- indices %>%
@@ -654,6 +724,65 @@ occupation_BV_details_1990 <- occupation_BV_details_1990 %>%
 
 surface_BV<- read.csv("BV_surface.csv", stringsAsFactors = FALSE)
 
+#### Plan d'ech #####
+# Fonction pour lire les fichiers Excel et les coller ensemble pour forme que 1 tables par eqb
+lire_plans <- function(chemin_dossier, motif, eqb_nom) { # Argument dont elle a besoin
+
+  fichiers <- list.files( # Liste des fichiers
+    path = chemin_dossier, # Dossier à parcourir donner par la suite
+    pattern = motif, # Regarde seulement les fichiers qui correspondent au motif choisi
+    full.names = TRUE ) # Le chemin entier
+
+  if (length(fichiers) == 0) { # Verifie qu'un fichier existe sinon message
+    stop("Aucun fichier trouvé dans : ", chemin_dossier)}
+
+  purrr::map_dfr(fichiers, function(fichier) { # Creation d'une boucle pour lire les fichiers et fusionner
+    readxl::read_excel( # Ouvre les fichiers
+      path = fichier,
+      col_types = "text") |> # Met les colone en text pour eviter les erreurs
+      dplyr::mutate( # Ajoute ou modfie des colonnes
+        fichier_source = basename(fichier), # Ajoute un colonne avec le nom des fichier pour verifier
+        code_station = stringr::str_extract( # Extrait le code station dans le colonne prelevement
+          Prélèvement,
+          "(?<=Prél: )\\d+" ),
+        date_prelevement = stringr::str_extract( # Etrait la date
+          Prélèvement,
+          "\\d{2}/\\d{2}/\\d{4}" ),
+        date_prelevement = lubridate::dmy(date_prelevement),# Transforme en date et pas en texte
+        annee = lubridate::year(date_prelevement),# Recupere que l'année
+        eqb = eqb_nom ) |> # Ajoute une colonne avce l'eqb
+      dplyr::relocate( # Deplacement de l'odre des colonnes
+        eqb,
+        code_station,
+        date_prelevement,
+        annee,
+        fichier_source)
+  } ) }
+
+# Chemin des dossiers
+dossier_plan <- "C:/Users/pauline.deblock/Documents/stage Pauline/R/hydrobioNOR/données/plan ech"
+
+#Creation des tables
+plan_diatomees <- lire_plans(
+  chemin_dossier = file.path(dossier_plan, "diat"), # Dossier a chercher
+  motif = "^IBD_FACIES_.*\\.xlsx$", # Ficher
+  eqb_nom = "Diatomées") # Nom de l'eqb
+
+plan_macrophytes <- lire_plans(
+  chemin_dossier = file.path(dossier_plan, "macrophyte"),
+  motif = "^IBMR_FACIES_.*\\.xlsx$",
+  eqb_nom = "Macrophytes")
+
+plan_inv_facies <- lire_plans(
+  chemin_dossier = file.path(dossier_plan, "MIV"),
+  motif = "^FACIES_INV_.*\\.xlsx$",
+  eqb_nom = "Macroinvertébrés")
+
+plan_inv_phases <- lire_plans(
+  chemin_dossier = file.path(dossier_plan, "MIV"),
+  motif = "^PHASES_INV_.*\\.xlsx$",
+  eqb_nom = "Macroinvertébrés")
+
 
 #### Table pour les cartes#######
 # Table donnee_carte: Résumé taxons par station
@@ -794,11 +923,11 @@ donnee_carte_taxon <- taxons %>%
     code_qualification,
     libelle_qualification)
 
-#### Table pour le diag####
-#Construction table entree_miv_seee
+#### Diag####
+
+  ## Construction table entree_inv
 taxons_inv <- taxons %>%
   filter(code_support == "13")  # Prendre que les MIV
-
 entree_inv <- taxons_inv %>%
   left_join(
     stations %>% select(code_station, typologie),# Il faut la typologie
@@ -813,32 +942,25 @@ entree_inv <- taxons_inv %>%
     RESULTAT       = as.integer(resultat_taxon),
     CODE_REMARQUE  = code_remarque)
 
-# Table entree_dia
+  ## Construction table entree_dia
 tc_diat <- readxl::read_excel("TCv1.3_DIAT.xlsx")
 taxons_diat <- taxons %>%
   filter(code_support == "10")  # Prendre que les DIA
-
-# Lecture des 2 fichiers exportés du Sandre
-export_diat_a <- read_csv2(
+export_diat_a <- read_csv2( # Lecture des 2 fichiers exportés du Sandre
   "C:/Users/pauline.deblock/Documents/stage Pauline/R/hydrobioNOR/données/export_1775210580.csv")
 export_diat_b <- read_csv2(
   "C:/Users/pauline.deblock/Documents/stage Pauline/R/hydrobioNOR/données/export_diat1.csv")
-
-# Attention une table contient tout les compartiements
-# Filtrer chaque table sur CdThemeTaxon = 5 puis les fusionner
-export_diat <- bind_rows(
+export_diat <- bind_rows( # Filtrer chaque table sur CdThemeTaxon = 5 puis les fusionner
   export_diat_a %>% filter(as.character(CdThemeTaxon) == "5"),
   export_diat_b %>% filter(as.character(CdThemeTaxon) == "5")) %>%
   distinct()
 
-#Vérifier que les colonnes CdAlternatif1 à CdAlternatif5 existent
-colonnes_alt <- paste0("CdAlternatif", 1:5)
+colonnes_alt <- paste0("CdAlternatif", 1:5) #Vérifier que les colonnes CdAlternatif1 à CdAlternatif5 existent
 for (col in colonnes_alt) {
   if (!col %in% names(export_diat)) {
     export_diat[[col]] <- NA_character_ } }
 
-# Nettoyer les colonnes utiles de export_diat
-export_diat <- export_diat %>%
+export_diat <- export_diat %>% # Nettoyer les colonnes utiles de export_diat
   mutate(
     CdAppelTaxon  = trimws(as.character(CdAppelTaxon)),
     CdAlternatif1 = toupper(trimws(as.character(CdAlternatif1))),
@@ -847,19 +969,14 @@ export_diat <- export_diat %>%
     CdAlternatif4 = toupper(trimws(as.character(CdAlternatif4))),
     CdAlternatif5 = toupper(trimws(as.character(CdAlternatif5))) )
 
-
-# Fonction pour vérifier si un code =  4 lettres
-est_code_valide <- function(x) {
+est_code_valide <- function(x) { # Fonction pour vérifier si un code =  4 lettres
   x <- trimws(as.character(x))
-  if (length(x) == 0 || is.na(x) || x == "") {
-    return(FALSE)}
+  if (length(x) == 0 || is.na(x) || x == "") { return(FALSE)}
   str_detect(x, "^[A-Z]{4}$") }
 
-# Construire la table de correspondance
-# Pour chaque CdAppelTaxon, on garde la liste des codes valides dans l'ordre
-correspondance_taxon <- export_diat %>%
+correspondance_taxon <- export_diat %>% # Construire la table de correspondance
   rowwise() %>%
-  mutate(
+  mutate( # Pour chaque CdAppelTaxon, on garde la liste des codes valides dans l'ordre
     codes_valides = list(c(
       if (est_code_valide(CdAlternatif1)) CdAlternatif1 else NULL,
       if (est_code_valide(CdAlternatif2)) CdAlternatif2 else NULL,
@@ -870,25 +987,19 @@ correspondance_taxon <- export_diat %>%
   distinct(CdAppelTaxon, .keep_all = TRUE) %>%
   select(CdAppelTaxon, codes_valides)
 
-
-# Préparer la table taxons_diat
-# On crée :
-# - n = nombre d'occurrences d'un taxon dans une opération
-# - rang_doublon = rang de la ligne dans ce groupe
-taxons_diat_prep <- taxons_diat %>%
+taxons_diat_prep <- taxons_diat %>% # Prepare la table
   mutate(
     code_appel_taxon = trimws(as.character(code_appel_taxon)),
     code_prelevement = as.character(code_prelevement),
     code_station     = as.character(code_station) ) %>%
   group_by(code_prelevement, code_appel_taxon) %>%
-  mutate(
-    n = n(),
-    rang_doublon = row_number() ) %>%
+  mutate( # On crée :
+    n = n(),# N= nombre d'occurrences d'un taxon dans une opération
+    rang_doublon = row_number() ) %>% # - rang_doublon = rang de la ligne dans ce groupe
   ungroup()
 
-# Lecture du fichier contenant les corrections manuelles
 na_uniques <- readxl::read_excel("NA_uniques.xlsx") %>%
-  mutate(
+  mutate( # Lecture du fichier contenant les corrections manuelles
     CODE_OPERATION   = as.character(CODE_OPERATION),
     CODE_STATION     = as.character(CODE_STATION),
     DATE             = as.character(DATE),
@@ -897,23 +1008,17 @@ na_uniques <- readxl::read_excel("NA_uniques.xlsx") %>%
     n                = as.integer(n),
     Nouveau_code     = as.character(Nouveau_code) )
 
-# Créer entree_diat
-# Si un taxon apparaît plusieurs fois dans une même opération,
-# on attribue les codes valides selon le rang :
-# 1re ligne = 1er code valide
-# 2e ligne = 2e code valide
-# Puis si un Nouveau_code existe dans NA_uniques.xlsx, il remplace CODE_TAXON
-entree_diat <- taxons_diat_prep %>%
+entree_diat <- taxons_diat_prep %>% # Creer entree-diat
   left_join(
     correspondance_taxon,
     by = c("code_appel_taxon" = "CdAppelTaxon")) %>%
   rowwise() %>%
   mutate(
-    CODE_TAXON = if (
-      !is.null(codes_valides) &&
-      length(codes_valides) >= rang_doublon) {
-      as.character(codes_valides[[rang_doublon]])
-    } else {  NA_character_ }) %>%
+    CODE_TAXON = if ( # Si un taxon apparaît plusieurs fois dans une même opération,
+      !is.null(codes_valides) && # on attribue les codes valides selon le rang :
+      length(codes_valides) >= rang_doublon) { # 1re ligne = 1er code valide
+      as.character(codes_valides[[rang_doublon]]) # 2e ligne = 2e code valide
+    } else {  NA_character_ }) %>% # Puis si un Nouveau_code existe dans NA_uniques.xlsx, il remplace CODE_TAXON
   ungroup() %>%
   transmute(
     CODE_OPERATION   = code_prelevement,
@@ -936,20 +1041,31 @@ entree_diat <- taxons_diat_prep %>%
     CODE_TAXON,
     RESULTAT )
 
+entree_diat <- entree_diat %>% # Table diatomées
+  dplyr::select(-code_appel_taxon) # Supprime colonne inutile SEEE
+
+  ## Lancement du diag SEEE ici car le calcul est trop lourd pour le faire sur l'instant T (peut etre tres long)
+diagnostic_inv <- fun_lancer_diagnostic_seee_local( # Appel de la fonction definie dans fun_diagnostic_seee.R
+  df_entree = entree_inv,
+  type_diag = "Macroinvertébrés") # Calcul inv
+diagnostic_diat <- fun_lancer_diagnostic_seee_local(
+  df_entree = entree_diat,
+  type_diag = "Diatomées") # Calcul diat
+
 #### Table valeur_seuil_taxon ####
 # Récupération de la liste des fichiers de paramètres des indices dans le dossier des algorithmes SEEE version 2018.
 fichiers_parametres <- list.files(
-  path = "algo_seee/EBio_CE_2018/1.0.1",
+  path = "algo_SEEE/EBio_CE_2018/1.0.1",
   pattern = "params",
   full.names = TRUE) # permet d'obtenir le chemin complet des fichiers
 
 # Ajout du fichier IBG-DCE de la méthode 2015, meme fonctionnement que etat_bio (cas exceptionnel)
 fichiers_parametres <- c( fichiers_parametres[!stringr::str_detect(fichiers_parametres, "IBG-DCE")],
-  "algo_seee/EBio_CE_2015/1.0.1/EBio_CE_2015_params_IBG-DCE.csv")
+  "algo_SEEE/EBio_CE_2015/1.0.1/EBio_CE_2015_params_IBG-DCE.csv")
 
 # Noms d'indices à partir des noms de fichiers
 noms_indices_param <- fichiers_parametres |>
-  stringr::str_remove("algo_seee/EBio_CE_201\\d/1.0.1/EBio_CE_201\\d_params_") |>
+  stringr::str_remove("algo_SEEE/EBio_CE_201\\d/1.0.1/EBio_CE_201\\d_params_") |>
   stringr::str_remove("\\.csv")
 
 # Import des seuils des différents indices
@@ -1099,7 +1215,9 @@ save( stations,
       valeur_seuil_taxon,
       resume_liste,
       entree_inv,
+      diagnostic_inv,
       entree_diat,
+      diagnostic_diat,
       metriques,
       occupation_2018,
       occupation_2012,
