@@ -1,16 +1,10 @@
 #' carte UI Function
-#'
-#' @description Module Shiny permettant d'afficher une carte interactive des stations de suivi
+#' @description Module Shiny permettant d'afficher la carte interactive des stations
 #' @noRd
-#' @importFrom shiny NS tagList
-#' @importFrom leaflet leafletOutput
-#' @export
 
 mod_station_carte_ui <- function(id, hauteur = "700px") { # Hauteur de la carte
   ns <- shiny::NS(id) # Namespace du module
-
   shiny::tagList( # Sert à regrouper plusieurs éléments
-
     shiny::selectizeInput( # Barre de recherche pour retrouver une station par son nom
       inputId = ns("recherche_station"), # ID
       label = "Rechercher une station", # Texte affiché
@@ -23,21 +17,15 @@ mod_station_carte_ui <- function(id, hauteur = "700px") { # Hauteur de la carte
 
     leaflet::leafletOutput(
       outputId = ns("carte_stations"), # ID de la carte
-      height = hauteur) ) # Affichage de la carte leaflet
-}
+      height = hauteur) ) } # Affichage de la carte leaflet
+
 
 #' Carte server Function
-#'
 #' @description Module shiny qui permet d'afficher les données sur la carte
-#' @param choix_departements Reactive contenant les départements sélectionnés
-#' @param choix_eqb Reactive contenant les EQB sélectionnés
-#' @param choix_uh Reactive contenant les UH sélectionnées
-#' @param choix_reseau Reactive contenant les reseaux sélectionnés
-#' @param choix_qualification Reactive contenant les qualif sélectionnées
 #' @return Reactive du code de la station sélectionnée
 #' @noRd
 
-mod_station_carte_server <- function(id, # Logique qui recoit les données et les choix
+mod_station_carte_server <- function(id, # Recoit les données et les choix
                                      donnees,
                                      choix_departements,
                                      choix_eqb,
@@ -60,7 +48,10 @@ mod_station_carte_server <- function(id, # Logique qui recoit les données et le
       df_taxon <- donnees()$donnee_carte_taxon # Table annexe pour les taxons
       df_etat <- donnees()$etat_bio # Table annexe pour les indices
 
-# Application du filtre département
+
+# Applocation des filtres
+
+      # Département
       if (!is.null(choix_departements()) && # Filtre existe
           length(choix_departements()) > 0 && # Au moins un choix
           !("Tous" %in% choix_departements())) { # Pas tous
@@ -68,7 +59,7 @@ mod_station_carte_server <- function(id, # Logique qui recoit les données et le
           df,
           code_dep %in% choix_departements() ) }
 
-# Application du filtre EQB
+      # EQB
       if (!is.null(choix_eqb()) && # Filtre existe
           length(choix_eqb()) > 0 && # Au moins un choix
           !("Tous" %in% choix_eqb())) { # Pas tous
@@ -81,7 +72,7 @@ mod_station_carte_server <- function(id, # Logique qui recoit les données et le
           df,
           code_station %in% stations_eqb) }
 
-# Application filtre qualification
+      # Qualification
       if (!is.null(choix_qualification) && # Filtre existe
           !is.null(choix_qualification()) && # Valeur existe
           length(choix_qualification()) > 0 && # Au moins un choix
@@ -106,7 +97,7 @@ mod_station_carte_server <- function(id, # Logique qui recoit les données et le
           df,
           code_station %in% stations_qualification) }
 
-# Application du filtre UH
+      # UH
       if (!is.null(choix_uh()) && # Filtre existe
           length(choix_uh()) > 0 && # Au moins un choix
           !("Toutes" %in% choix_uh()) && # Pas toutes
@@ -115,7 +106,7 @@ mod_station_carte_server <- function(id, # Logique qui recoit les données et le
           df,
           UH_calculee %in% choix_uh())  }
 
-# Application du filtre réseau
+      # Réseau
       if (!is.null(choix_reseau()) && # Filtre existe
           length(choix_reseau()) > 0 && # Au moins un choix
           !("Tous" %in% choix_reseau()) && # Pas tous
@@ -133,7 +124,10 @@ mod_station_carte_server <- function(id, # Logique qui recoit les données et le
           "Aucune donnée disponible pour cette combinaison de filtres."))
       sf::st_transform(df, 4326) } ) # Conversion en WGS84
 
-# Couches préparées dans le script de préparation des données de référence
+
+# Création de la carte
+
+    # Couches préparées dans le script de préparation des données de référence
     limites_region_carte <- shiny::reactive({ # Limite des régions
       sf::st_transform(limites_region_l, 4326) } ) # Conversion WGS84
     limites_cours_eau_carte <- shiny::reactive({ # Cours d'eau
@@ -141,7 +135,7 @@ mod_station_carte_server <- function(id, # Logique qui recoit les données et le
     limites_bv_carte <- shiny::reactive({ # Bassins versants
       sf::st_transform(limites_bv_l, 4326) } )
 
-# Création initiale de la carte
+    # Création initiale de la carte
     output$carte_stations <- leaflet::renderLeaflet({ # Carte interactive
       limites_region <- limites_region_carte() # Limites administratives
       cours_eau <- limites_cours_eau_carte() # Cours d'eau
@@ -188,8 +182,8 @@ mod_station_carte_server <- function(id, # Logique qui recoit les données et le
           options = leaflet::layersControlOptions(collapsed = FALSE)) |> # Contrôle ouvert
         leaflet::hideGroup("Bassins versants") } )# Masque les bassins au démarrage
 
-    shiny::outputOptions(
-      output,
+    shiny::outputOptions( # Empêche la suspension de la carte lorsqu'elle est cachée
+      output,  # (ex. changement d'onglet) afin qu'elle continue à se mettre à jour
       "carte_stations",
       suspendWhenHidden = FALSE)
 

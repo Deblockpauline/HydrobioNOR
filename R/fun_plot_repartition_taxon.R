@@ -1,14 +1,5 @@
 #' Graphique du nombre de stations par année pour un taxon
-#'
 #' @description Cette fonction affiche le nombre de stations où le taxon est present par an
-#'
-#' @param donnees Liste contenant les objets de l'application
-#' @param choix_departements Départements sélectionnés
-#' @param choix_eqb EQB sélectionnés
-#' @param choix_uh UH sélectionnées
-#' @param choix_reseau Reseau sélectionné
-#' @param choix_qualification
-#' @param taxon_selectionne Taxon sélectionné
 #' @return Un graphique plotly
 #' @noRd
 
@@ -48,7 +39,6 @@ fun_plot_repartition_taxon <- function(donnees,
           seq( # Création de la séquence continue
             min(annees),
             max(annees) )  } ) ) |>
-
     tidyr::unnest(annee) |> # Déplie les années
     dplyr::group_by( # Regroupement
       libelle_taxon, # Taxon

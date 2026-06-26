@@ -1,12 +1,8 @@
 #' Module UI du contexte environnemental de la station
 #'
-#' @description
-#' Interface du module affichant l'évolution de l'occupation du sol
+#' @description Interface du module affichant l'évolution de l'occupation du sol
 #' d'une station hydrobiologique au fil des années, sous forme
 #' d'un graphique multicourbe interactif et d'un tableau récapitulatif exportable.
-#'
-#' @param id Identifiant du module
-#'
 #' @noRd
 
 mod_station_contexte_env_ui <- function(id) {
@@ -47,17 +43,11 @@ mod_station_contexte_env_ui <- function(id) {
 
 #' Module server du contexte environnemental de la station
 #'
-#' @description
-#' Module serveur affichant l'évolution de l'occupation du sol
+#' @description Module serveur affichant l'évolution de l'occupation du sol
 #' de la station sélectionnée :
 #' - graphique multicourbe interactif,
 #' - tableau récapitulatif,
 #' - export du tableau au format .csv.
-#'
-#' @param id Identifiant du module
-#' @param donnees Reactive contenant les données de l'application
-#' @param station_selectionnee Reactive contenant le code de la station sélectionnée
-#'
 #' @noRd
 
 mod_station_contexte_env_server <- function(id, donnees, station_selectionnee) {
@@ -91,11 +81,6 @@ mod_station_contexte_env_server <- function(id, donnees, station_selectionnee) {
 
       p <- fun_plot_station_occupation( # Appel la fonction= ne fait que tracer le graph
         table_long = occ$table_long)
-
-      shiny::validate(
-        shiny::need( # Deuxieme validation, si p est null.
-          !is.null(p),
-          "Impossible de créer le graphique d'occupation du sol." ))
 
       plotly::ggplotly( # Transformation en Ploty pour avoir le zoom, le survol etc..
         p,

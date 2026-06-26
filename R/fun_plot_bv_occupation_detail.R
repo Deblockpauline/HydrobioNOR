@@ -1,18 +1,12 @@
 #' Préparation des données détaillées d'occupation du sol du bv
-#'
-#' @description On part du code_station, on récupère le bv correspondant via id_BV
+#' @description On part du code_station, on récupère le bv correspondant via id_BV (table station)
 #' qui est recherché dans la colonne CdOH de la table occupation_BV_details_xxxx
 #' C'est le meme fonctionnement que fun_plot_bv_occupation sauf que ici, pas de boucle car on travaille sur 1 année
-#'
-#' @param donnees Liste contenant les objets de l'application
-#' @param station_id Code de la station sélectionnée
-#' @param annee Année choisie pour afficher le camembert
 #' @return Un tableau détaillé prêt pour le graphique, ou NULL si aucune donnée
 #' @noRd
 
 fun_prep_bv_occupation_detail <- function(donnees, station_id, annee) {
 
-  #Verification
   if (is.null(donnees) || is.null(station_id) || is.na(station_id) || station_id == "") {
     return(NULL)} # Vérifie que les données existent et qu'une station est bien sélectionnée
   stations <- donnees$stations # Récupère la table stations dans un objet plus simple
@@ -37,7 +31,7 @@ fun_prep_bv_occupation_detail <- function(donnees, station_id, annee) {
       CdOH = as.character(.data$CdOH)) # Transforme CdOH en caractère pour la comparaison avec id_bv
 
   bv_occ <- table_occ %>%
-    dplyr::filter(.data$CdOH == id_bv) # Garde uniquement la ligne du BV correspondant à la station
+    dplyr::filter(.data$CdOH == id_bv) # Garde uniquement la ligne du BV correspondant à la station, fais la correpondance entre les 2
   if (nrow(bv_occ) == 0) {return(NULL) }
   bv_occ <- bv_occ[1, , drop = FALSE] # Sécurité : on garde la 1ere ligne et on reste en tableau
 
@@ -60,11 +54,9 @@ fun_prep_bv_occupation_detail <- function(donnees, station_id, annee) {
   return(table_detail) # Retourne le tableau final prêt pour le camembert
 }
 
+#---------------------------------------------------------------------------------------------
 
 #' Camembert des occupations détaillées du bassin versant
-#'
-#' @param table_detail Tableau issu de fun_prep_bv_occupation_detail()
-#'
 #' @return Un graphique plotly, ou NULL si aucune donnée
 #' @noRd
 

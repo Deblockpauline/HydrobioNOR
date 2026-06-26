@@ -2,22 +2,23 @@
 #' @description Fonctions pour filtrer les données de l'application
 #' @noRd
 
+#------------------------------------------------------------------------------------------------
 #' 1) Filtrer les stations selon la géographie
 #'
-#' @description
-#' Cette fonction filtre la table des stations selon  le département ou l'UH
-#' Le filtre EQB est géré directement dans le module de carte à partir d'une table annexe
+#' @description Cette fonction filtre la table des stations selon  le département,l'UH et le réseau
+#' Le filtre EQB est géré  dans le module de carte à partir d'une autre table
 #' @param station Table des stations
-#' @param choix_departement Département sélectionné
-#' @param choix_uh Unité hydrographique sélectionnée
-#' @param choix_reseau Reseau séléctionné
+#' @param choix_departement Choix du département
+#' @param choix_uh Choix de l'unité hydrographique
+#' @param choix_reseau Choix du reseau
 #' @return une table des stations filtrées
 #' @export
 
-filtrer_stations <- function(station, # Creation de la fonction avec les filtres
+filtrer_stations <- function(station,
                              choix_departement = "Tous",
                              choix_uh = "Toutes",
                              choix_reseau ="Tous") {
+
   station_filtree <- station # Copie de la table
 
   # Filtre département
@@ -52,15 +53,12 @@ filtrer_stations <- function(station, # Creation de la fonction avec les filtres
 
   return(station_filtree) } # Retour du résultat final
 
+#------------------------------------------------------------------------------------------------
 #' 2) Filtrer une table selon les filtres globaux
 #'
-#' @description Cette fonction filtre une table de données selon le départements et l'EQB sélectionnés
+#' @description Cette fonction filtre une table (peu importe laquelle) selon le départements,l'EQB, le reseau et la qualification
 #' Pas de filtre UH ici car toutes les tables ne contiennent pas cette variable
-#' @param data Table à filtrer ( nom générique)
-#' @param choix_departements Département sélectionné
-#' @param choix_eqb EQB sélectionné
-#' @param choix_reseau Reseau selectionné
-#' @param choix_qualification Qualification selectionnée
+#' @param data Table à filtrer (nom générique)
 #' @return La table filtrée
 #' @export
 
@@ -111,6 +109,7 @@ filtrer_donnees <- function(data,
 
   return(data_filtree) } # Retour de la table filtrée
 
+#------------------------------------------------------------------------------------------------
 #' 3) Filtrer une table selon la station sélectionnée
 #' @param data Table contenant une colonne `code_station`
 #' @param choix_station Code de la station sélectionnée

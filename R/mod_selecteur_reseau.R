@@ -1,5 +1,4 @@
 #' Module UI du sélecteur de réseau
-#'
 #' @param id Identifiant du module
 #' @noRd
 
@@ -15,9 +14,6 @@ mod_selecteur_reseau_ui <- function(id) {
 
 
 #' Module server du sélecteur de réseau
-#'
-#' @param id Identifiant du module
-#' @param donnees Reactive contenant les données
 #' @noRd
 
 mod_selecteur_reseau_server <- function(id, # ID module

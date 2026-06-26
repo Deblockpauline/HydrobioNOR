@@ -1,11 +1,8 @@
 #' Module UI du contexte environnemental du bassin versant
-#'
 #' @description
 #' Interface du module affichant l'évolution de l'occupation du sol
 #' du bassin versant
-#'
 #' @param id Identifiant du module
-#'
 #' @noRd
 
 mod_station_contexte_env_bv_ui <- function(id) {
@@ -87,9 +84,7 @@ mod_station_contexte_env_bv_ui <- function(id) {
   ) }
 
 #' Module server du contexte environnemental du bassin versant
-#'
-#' @description
-#' Module serveur affichant l'évolution de l'occupation du sol
+#' @description Module serveur affichant l'évolution de l'occupation du sol
 #' du bassin versant associé à la station sélectionnée :
 #' - graphique multicourbe interactif,
 #' - tableau récapitulatif,
@@ -97,11 +92,6 @@ mod_station_contexte_env_bv_ui <- function(id) {
 #' - camembert détaillé pour une année choisie,
 #' - tableau détaillé du camembert,
 #' - export du tableau détaillé au format .csv.
-#'
-#' @param id Identifiant du module
-#' @param donnees Reactive contenant les données de l'application
-#' @param station_selectionnee Reactive contenant le code de la station sélectionnée
-#'
 #' @noRd
 
 mod_station_contexte_env_bv_server <- function(id, donnees, station_selectionnee) {

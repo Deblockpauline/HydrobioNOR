@@ -1,9 +1,7 @@
 #' Fonction d'application des filtres aux données qualité
-#'
-#' @description On part de la table `etat_bio`, on applique les filtres ( dep, eqb, uh),
+#' @description On part de la table etat_bio, on applique les filtres,
 #' puis renvoie un tableau pour construire le graphique.
-#' Le filtre UH est appliqué via la table `stations` car non present dans`etat_bio`.
-#'
+#' Le filtre UH est appliqué via la table stations car non present dans etat_bio.
 #' @return Un tableau filtré contenant les données de qualité
 #' @noRd
 
@@ -14,78 +12,66 @@ fun_prep_qualite <- function(donnees,
                              choix_reseau = NULL,
                              choix_qualification = NULL) {
 
-  # Vérifie que les données nécessaires existent
-  if (is.null(donnees) || # Vérifie la liste globale
-      is.null(donnees$etat_bio) || # Vérifie la table qualité
-      is.null(donnees$stations)) { # Vérifie la table stations
+  if (is.null(donnees) || # Vérifie que les données et tables soient chargée
+      is.null(donnees$etat_bio) ||
+      is.null(donnees$stations)) {
     return(NULL) } # Arrête la fonction si une table manque
 
-  data <- donnees$etat_bio # Récupère la table qualité écologique
-  choix_eqb_etat_bio <- choix_eqb # Copie du filtre EQB ( car probleme)
+  data <- donnees$etat_bio # Récupère la table
 
-  # Vérifie qu'un EQB a été sélectionné
+  # Gestion du filtre EQB
+  choix_eqb_etat_bio <- choix_eqb # Copie du filtre EQB (car probleme de correspondance de nom)
   if (!is.null(choix_eqb_etat_bio) && # Vérifie que le filtre existe
       length(choix_eqb_etat_bio) > 0) { # Vérifie qu'il contient une valeur
-
     choix_eqb_etat_bio <- dplyr::case_when( # Harmonise les noms des compartiments
-      choix_eqb_etat_bio == "Diatomées" ~ "Diatomées benthiques", # Correspondance diatomées
-      choix_eqb_etat_bio == "Macroinvertébrés" ~ "Macroinvertébrés aquatiques", # Correspondance invertébrés
-      choix_eqb_etat_bio == "Macrophytes" ~ "Macrophytes", # Correspondance macrophytes
-      choix_eqb_etat_bio == "Poissons" ~ "Poissons", # Correspondance poissons
-      choix_eqb_etat_bio == "Tous" ~ "Tous", # Cas sans filtre
+      choix_eqb_etat_bio == "Diatomées" ~ "Diatomées benthiques",
+      choix_eqb_etat_bio == "Macroinvertébrés" ~ "Macroinvertébrés aquatiques",
+      choix_eqb_etat_bio == "Macrophytes" ~ "Macrophytes",
+      choix_eqb_etat_bio == "Poissons" ~ "Poissons",
+      choix_eqb_etat_bio == "Tous" ~ "Tous",
       TRUE ~ choix_eqb_etat_bio) } # Sinon conserve la valeur
 
-  # Application des filtres département + EQB
+  # Application des filtres
   data <- filtrer_donnees(
     data = data, # Table à filtrer
-    choix_departements = choix_departements, # Département sélectionné
-    choix_eqb = choix_eqb_etat_bio, # EQB harmonisé
-    choix_qualification = choix_qualification) # Qualif selectionnée
-
-  # Sécurité : si le filtre renvoie NULL
-  if (is.null(data)) {data <- donnees$etat_bio} # Reprend la table complète
+    choix_departements = choix_departements,
+    choix_eqb = choix_eqb_etat_bio,
+    choix_qualification = choix_qualification)
+  if (is.null(data)) {data <- donnees$etat_bio} # Si le filtre ne renvoie rien, reprend la table complète
 
   # Filtrage géographique des stations
   stations_filtrees <- filtrer_stations(
     station = donnees$stations, # Table stations
-    choix_departement = choix_departements, # Département sélectionné
-    choix_uh = choix_uh, # UH sélectionnée
-    choix_reseau = choix_reseau) # Reseau sélectionné
+    choix_departement = choix_departements,
+    choix_uh = choix_uh,
+    choix_reseau = choix_reseau)
+  if (is.null(stations_filtrees)) {stations_filtrees <- donnees$stations} # Si le filtre renvoie rien, reprend toutes les stations
 
-  # Sécurité : si aucun filtre station valide
-  if (is.null(stations_filtrees)) {stations_filtrees <- donnees$stations} # Reprend toutes les stations
-
-  # Harmonise le type de code_station
+  # Harmonisation des codes stations en caractere dans les 2 tables filtrés
   data <- data %>%
     dplyr::mutate(
-      code_station = as.character(.data$code_station)) # Conversion caractère
+      code_station = as.character(.data$code_station))
 
-  # Harmonise aussi dans la table stations
   stations_filtrees <- stations_filtrees %>%
     dplyr::mutate(
-      code_station = as.character(.data$code_station)) # Conversion caractère
+      code_station = as.character(.data$code_station))
 
   # Garde uniquement les stations retenues
   data <- data %>%
     dplyr::filter(
       .data$code_station %in% stations_filtrees$code_station )# Jointure par code station
-
-  # Vérifie qu'il reste des données
   if (nrow(data) == 0) {return(NULL)} # Arrête si aucune ligne restante
   return(data)} # Retourne la table filtrée finale
 
 
+#------------------------------------------------------------------------------------------------------------------------
 #' Fonction de tracé des histogrammes de qualité
-#'
-#' @description Les données sont regroupées par cycle DCE et par indice biologique,
-#' afin d'obtenir une vision synthétique de la répartition des classes de qualité.
-#'
+#' @description Les données sont regroupées par cycle DCE et par indice biologique
 #' @param donnees_graphique Tableau contenant: code_station, annee, libelle_indice, classe_indice
-#'
 #' @return Un graphique ggplot
 #' @noRd
 
-fun_plot_qualite <- function(donnees_graphique) {
+fun_plot_qualite <- function(donnees_graphique) { # donnees_graphique reçoit les données filtrées (df) envoyées lors de l'appel de la fonction dans le mod
 
   if (is.null(donnees_graphique) || nrow(donnees_graphique) == 0){ # Vérifie que les données existent bien
     return( # Si non , affiche :
@@ -145,7 +131,7 @@ fun_plot_qualite <- function(donnees_graphique) {
       text = texte_survol ) ) +
     ggplot2::geom_col() + # Barre
     ggplot2::facet_wrap(~ libelle_indice, scales = "free_y") + # 1 graph par indices
-    ggplot2::scale_fill_manual( # Onchange les coueleur manuellement
+    ggplot2::scale_fill_manual( # On change les coueleurs manuellement
       values = c(
         "MEDIOCRE" = "#fc8d59",
         "MAUVAIS" = "#d73027",

@@ -1,5 +1,4 @@
 #' Préparer les dates SEEE
-#'
 #' @description Les dates ne sont pas au bons format pour l'affichage dans l'outil
 #' @noRd
 
@@ -8,11 +7,10 @@ fun_date_seee <- function(x) { # Conversion de la date
     grepl("/", as.character(x)) ~ as.Date(x, format = "%d/%m/%Y"), # Quand c'est en jour/mois/année
     TRUE ~ as.Date(x))} # Juste l'année
 
+#--------------------------------------------------------------------------------------------------------------------
 #' Lancer diagnostic SEEE local
-#'
 #' @description Cette fonction permet de lancer le calcul, elle est appelée dans le script prep_data_hydrobio car le calcul est
 #' trop lourd pour le faire au moment du lancement de l'outil
-#'
 #' @noRd
 
 fun_lancer_diagnostic_seee_local <- function(df_entree, # Table d'entrée (peut etre entree_diat ou inv)
@@ -167,13 +165,13 @@ fun_lancer_diagnostic_seee_local <- function(df_entree, # Table d'entrée (peut 
     get(tables_resultats[1], envir = env_seee) ) } # Récupère 1ère table résultat en tibble (qui est une sorte de data frame)
 
 
-# --------------------------------------------------------------------------------------------------
+# --------------------------------------------------------------------------------------------------------------------------------
 #' Préparer radar SEEE
 #'
 #' @noRd
 
-fun_preparer_radar_seee <- function(df, # Données du diagnostic
-                                    type_diag, # Type d'EQB choisi
+fun_preparer_radar_seee <- function(df,
+                                    type_diag,
                                     groupe) { # Groupe à afficher
 
   df <- df |> # Utilise les données en entrée
@@ -181,8 +179,10 @@ fun_preparer_radar_seee <- function(df, # Données du diagnostic
       DATE = fun_date_seee(DATE), # Convertit la date SEEE
       annee = lubridate::year(DATE) )# Extrait l'année
 
-  # Cas des macroinvertébrés
-  if (type_diag == "Macroinvertébrés") {
+
+# Cas des macroinvertébrés
+
+   if (type_diag == "Macroinvertébrés") {
 
     # Pressions chimiques
     if (groupe == "chimie") {
@@ -234,8 +234,10 @@ fun_preparer_radar_seee <- function(df, # Données du diagnostic
             INSTABILITE_HYDROLOGIQUE = "Instab. hydro.",
             ANTHROPISATION_BV = "Anthrop. BV" ) ) }
 
-    # Cas des diatomées, pas le meme tableau
-  } else {
+
+ # Cas des diatomées, pas le meme tableau
+
+      } else {
 
     # Pressions chimiques
     if (groupe == "chimie") {
@@ -294,8 +296,8 @@ fun_preparer_radar_seee <- function(df, # Données du diagnostic
       !is.na(resultat) ) }
 
 
+#------------------------------------------------------------------------------------------------------
 #' Radar diagnostic SEEE
-#'
 #' @noRd
 
 fun_plot_diagnostic_seee <- function(df,
@@ -325,7 +327,9 @@ fun_plot_diagnostic_seee <- function(df,
 
   p <- plotly::plot_ly() # Crée un graphique ploty vide
 
+
 # Boucle
+
   for (annee_i in annees) { # Boucle sur chaque année sélectionnée
     couleur_i <- unname(couleurs[annee_i]) # Récupère la couleur correspondant à l'année
 
@@ -365,6 +369,7 @@ fun_plot_diagnostic_seee <- function(df,
           "Résultat : %{r:.3f}<extra></extra>") ) }
 # Fin de la boucle par année
 
+
 # Pour le seuil
   df_seuil <- tibble::tibble( # Crée les données de la ligne du seuil
     pression = c(
@@ -372,9 +377,7 @@ fun_plot_diagnostic_seee <- function(df,
       ordre_pressions[1] ), # Ajoute la première pression à la fin pour ferme le cercle
     resultat = seuil) # Attribue la valeur du seuil à tous les axes
 
-
   p |> # Reprend le graphique avec les courbes des années
-
     # Ajout du seuil
     plotly::add_trace(
       data = df_seuil, # Données du seuil

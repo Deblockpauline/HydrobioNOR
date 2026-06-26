@@ -1,13 +1,6 @@
 #' Filtre les données de répartition des taxons
-#'
 #' @description Cette fonction applique les filtres sur la table donnee_carte_taxon
-#' @param donnees Liste contenant les objets de l'application
-#' @param choix_departements Départements sélectionnés
-#' @param choix_eqb EQB sélectionnés
-#' @param choix_uh UH sélectionnées
-#' @param choix_reseau  Reseau selectionné
-#' @param choix_qualification Qualif selectionnée
-#' @param taxon_selectionne Taxon sélectionné
+
 #' @return Une table filtrée
 #' @noRd
 

@@ -1,5 +1,4 @@
 #' Module UI du sélecteur de département
-#'
 #' @param id Identifiant du module
 #' @noRd
 
@@ -14,9 +13,6 @@ mod_selecteur_dep_ui <- function(id) {
       multiple = TRUE) ) } # Tous par defaut
 
 #' Module server du sélecteur de département
-#'
-#' @param id Identifiant du module
-#' @param donnees Reactive contenant les données
 #' @noRd
 
 mod_selecteur_dep_server <- function(id, donnees) {
@@ -26,8 +22,6 @@ mod_selecteur_dep_server <- function(id, donnees) {
       shiny::req(donnees()) # Verifie que données existe
       shiny::req("donnee_carte" %in% names(donnees())) # Verifie que donnee_carte est present
       df <- donnees()$donnee_carte # Stockage
-      shiny::req(!is.null(df))  # Sécurité : pas que ca soit nul et qu'on est un code_dep
-      shiny::req("code_dep" %in% names(df)) # Presence de la colonne code_dep
 
       liste_departements <- df |>  # Récupération des départements
         dplyr::pull(code_dep) |> # Prend la colonne code_dep

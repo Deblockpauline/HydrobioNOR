@@ -1,14 +1,10 @@
 #' Préparation des données d'occupation du sol du bv d'une station
 #'
-#' @description Cette 1ere fonction prepare les données pour le graphique et le tableau
+#' @description Cette fonction prepare les données pour le graphique et le tableau
 #' Le script est un peu plus detaillé dans les scripts pour l'occupation de la station
 #' La station sélectionnée est identifiée par son code_station,
 #' dans stations, on récupère son identifiant de bassin versant id_BV
 #' et cet identifiant est recherché dans la colonne CdOH des tables d'occupation
-#'
-#' @param donnees Liste contenant les objets de l'application
-#' @param station_id Code de la station sélectionnée
-#'
 #' @return Une liste contenant :
 #' - table_large : tableau avec les années en lignes et les catégories en colonnes
 #' - table_long : tableau au format long utilisé pour le graphique
@@ -97,6 +93,8 @@ fun_prep_bv_occupation <- function(donnees, station_id) {
     id_bv = id_bv ))
 }
 
+
+#------------------------------------------------------------------------------------
 
 #' Graphique d'évolution de l'occupation du sol du bassin versant
 #' @param table_long Tableau au format long issu de fun_prep_bv_occupation()

@@ -1,10 +1,6 @@
 #' Préparation des données d'occupation du sol pour une station
 #'
-#' @description Cette 1ere fonction prepare les données pour le graphique et le tableau
-#'
-#' @param donnees Liste contenant les objets de l'application
-#' @param station_id Code de la station sélectionnée
-#'
+#' @description Cette fonction prepare les données pour le graphique et le tableau
 #' @return Une liste contenant :
 #' - table_large : tableau avec les années en lignes et les catégories en colonnes
 #' - table_long : tableau au format long utilisé pour le graphique
@@ -77,11 +73,10 @@ fun_prep_station_occupation <- function(donnees, station_id) {
     table_long = table_long ))
 }
 
+#-------------------------------------------------------------------------------------------------------------------
 
 #' Graphique d'évolution de l'occupation du sol pour une station
-#'
 #' @param table_long Tableau au format long issu de fun_prep_station_occupation()
-#'
 #' @return Un graphique ggplot, ou NULL si aucune donnée
 #' @noRd
 

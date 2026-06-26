@@ -1,12 +1,10 @@
 #' Graphique des taxons par station
-#'
 #' @description Affiche les taxons observés par année pour une station.
 #' La taille des points correspond à l'abondance relative
-#' @param taxons Table des taxons déjà filtrés
 #' @return Graphique plotly
 #' @noRd
 
-fun_plot_taxons_station <- function(taxons) { # Fonction du graphique taxons
+fun_plot_taxons_station <- function(taxons) {
   df <- taxons # Copie de la table filtrée
   ordre_taxons <- df |> # Création de l'ordre des taxons
     dplyr::distinct(libelle_taxon) |> # Garde 1 ligne par taxon

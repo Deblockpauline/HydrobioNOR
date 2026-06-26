@@ -1,5 +1,4 @@
 #' Module UI du sélecteur des elements de qualité biologique (EQB)
-#'
 #' @param id Identifiant du module
 #' @noRd
 
@@ -19,8 +18,6 @@ mod_selecteur_eqb_ui <- function(id) {
       multiple=TRUE) ) } # Par defaut
 
 #' Module server du sélecteur EQB
-#'
-#' @param id Identifiant du module
 #' @return Une reactive contenant l'EQB sélectionné
 #' @noRd
 

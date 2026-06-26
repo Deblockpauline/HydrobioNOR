@@ -1,7 +1,5 @@
 #' Module UI du sélecteur de qualification
-#'
 #' @param id Identifiant du module
-#'
 #' @noRd
 
 mod_selecteur_qualification_ui <- function(id) { # Fonction UI module
@@ -15,10 +13,6 @@ mod_selecteur_qualification_ui <- function(id) { # Fonction UI module
       multiple = TRUE ) ) } # Sélection multiple
 
 #' Module server du sélecteur de qualification
-#'
-#' @param id Identifiant du module
-#' @param donnees Reactive contenant les données
-#'
 #' @noRd
 
 mod_selecteur_qualification_server <- function(id, # ID module
@@ -45,6 +39,7 @@ mod_selecteur_qualification_server <- function(id, # ID module
         choix_qualification == "incorrecte" ~ # Cas qualification incorrecte
           "incorrecte (pas dispo pour le sous-onglet Qualité et indices)", # Texte affiché
         TRUE ~ choix_qualification )# Sinon texte normal
+
       shiny::updateSelectizeInput( # Mise à jour liste déroulante
         session = session, # Session shiny
         inputId = "qualification", # ID input

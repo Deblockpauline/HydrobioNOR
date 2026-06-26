@@ -1,5 +1,4 @@
 #' Module UI du sélecteur d'unité hydrographique
-#'
 #' @param id Identifiant du module
 #' @noRd
 
@@ -14,11 +13,9 @@ mod_selecteur_UH_ui <- function(id) {
       multiple = TRUE) ) } # Valeur par défaut
 
 #' Module server du sélecteur d'unité hydrographique
-#'
-#' @param id Identifiant du module
-#' @param stations Reactive contenant la table des stations
 #' @return Une reactive contenant l'unité hydrographique sélectionnée
 #' @noRd
+
 library(dplyr)
 
 mod_selecteur_UH_server <- function(id, stations, choix_departements) {
@@ -51,8 +48,7 @@ mod_selecteur_UH_server <- function(id, stations, choix_departements) {
         inputId = "uh",
         choices = c("Toutes", choix_uh), # UH du département choisi
         selected = "Toutes",
-        server = TRUE) # Remet à Toutes
-    } )
+        server = TRUE) } ) # Remet à Toutes
 
     return(shiny::reactive(input$uh) ) # Réactive retrounée contennant l'UH selectionnée
    } ) }

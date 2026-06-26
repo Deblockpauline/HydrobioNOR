@@ -1,8 +1,6 @@
 #' Module UI des taxons par station
-#'
 #' @description Montre un graph des taxons présents dans la station et
 #' un tableau exportable des données.
-#' @param id Identifiant du module
 #' @noRd
 
 mod_communaute_taxons_ui <- function(id) { # Fonction UI du module
@@ -44,16 +42,9 @@ mod_communaute_taxons_ui <- function(id) { # Fonction UI du module
 }
 
 #' Module server des taxons par station
-#'
-#' @param id Identifiant du module
-#' @param donnees Reactive contenant les données
-#' @param station_selectionnee Reactive contenant le code station sélectionné
-#' @param choix_eqb Filtre global EQB
-#' @param choix_reseau Filtre global réseau
-#' @param choix_qualification Filtre global qualification
 #' @noRd
 
-mod_communaute_taxons_server <- function(id, # ID du module
+mod_communaute_taxons_server <- function(id,
                                          donnees,
                                          station_selectionnee,
                                          choix_eqb = NULL,
@@ -62,16 +53,15 @@ mod_communaute_taxons_server <- function(id, # ID du module
 
   shiny::moduleServer(id, function(input, output, session) {
 
-# Met à jour le groupe taxon avec le filtre EQB global
+# Met à jour le groupe taxon selon le filtre EQB global
     shiny::observe({ # Observe le filtre EQB
       if (!is.null(choix_eqb) && # Filtre existe
           !is.null(choix_eqb()) && # Valeur existe
           length(choix_eqb()) > 0 && # Au moins 1 choix
           !("Tous" %in% choix_eqb())) { # Pas tous
-
         shiny::updateSelectInput( # Met à jour la liste
           session = session, # Session du module
-          inputId = "groupe_taxon", # ID sans ns côté server
+          inputId = "groupe_taxon", # ID
           selected = choix_eqb() ) } } ) # Choix global
 
 # Filtre les données
@@ -82,7 +72,7 @@ mod_communaute_taxons_server <- function(id, # ID du module
       shiny::req(input$groupe_taxon) # Vérifie le groupe choisi
 
       df <- donnees()$taxons # Table taxons
-      if (!is.null(donnees()$stations) && "reseau" %in% names(donnees()$stations)) { # Si stations existe
+      if (!is.null(donnees()$stations) && "reseau" %in% names(donnees()$stations)) { # Si stations existe et qu'on a un reseau
         stations_reseau <- donnees()$stations |> # Table stations
           sf::st_drop_geometry() |> # Supprime la géométrie si sf
           dplyr::select(code_station, reseau) |> # Garde station + réseau
@@ -106,13 +96,13 @@ mod_communaute_taxons_server <- function(id, # ID du module
         dplyr::mutate(
           annee = lubridate::year(date_prelevement) ) # Année prélèvement
 
-      df <- df |> # Filtre le groupe biologique
+      df <- df |> # Filtre le groupe biologique avec la correspondance
         dplyr::filter(
           dplyr::case_when(
-            input$groupe_taxon == "Diatomées" ~ libelle_support == "Diatomées benthiques", # Diatomées
-            input$groupe_taxon == "Macrophytes" ~ libelle_support == "Macrophytes", # Macrophytes
-            input$groupe_taxon == "Poissons" ~ libelle_support == "Poissons", # Poissons
-            input$groupe_taxon == "Macroinvertébrés" ~ libelle_support == "Macroinvertébrés aquatiques", # Macroinvertébrés
+            input$groupe_taxon == "Diatomées" ~ libelle_support == "Diatomées benthiques",
+            input$groupe_taxon == "Macrophytes" ~ libelle_support == "Macrophytes",
+            input$groupe_taxon == "Poissons" ~ libelle_support == "Poissons",
+            input$groupe_taxon == "Macroinvertébrés" ~ libelle_support == "Macroinvertébrés aquatiques",
             TRUE ~ FALSE) ) # Sécurité
 
       df <- df |> # Garde les taxons présents
@@ -122,16 +112,16 @@ mod_communaute_taxons_server <- function(id, # ID du module
 
       df <- df |> # Garde une ligne par taxon/année
         dplyr::group_by(
-          code_station, # Code station
-          libelle_station, # Nom station
-          annee, # Année
-          libelle_support, # Support
-          code_appel_taxon, # Code taxon
-          libelle_taxon, # Nom taxon
-          code_qualification, # Code qualification
-          libelle_qualification, # Libellé qualification
-          reseau) |> # Réseau
-        dplyr::slice_max(
+          code_station,
+          libelle_station,
+          annee,
+          libelle_support,
+          code_appel_taxon,
+          libelle_taxon,
+          code_qualification,
+          libelle_qualification,
+          reseau) |>
+        dplyr::slice_max( # Prendre la plus grande valeur
           order_by = resultat_taxon, # Valeur utilisée
           n = 1, # Une seule ligne
           with_ties = FALSE) |> # Pas d'égalité
@@ -144,18 +134,18 @@ mod_communaute_taxons_server <- function(id, # ID du module
       shiny::req(taxons_filtres()) # Vérifie les données filtrées
       taxons_filtres() |> # Table filtrée
         dplyr::select(
-          date_prelevement, # Date prélèvement
-          annee, # Année
-          code_prelevement, # Code prélèvement
-          code_support, # Code support
-          libelle_support, # Nom support
-          code_appel_taxon, # Code taxon
-          libelle_taxon, # Nom taxon
-          resultat_taxon, # Résultat taxon
-          abondance_relative, # Abondance relative
-          code_qualification, # Code qualification
-          libelle_qualification, # Type de qualification
-          reseau) } ) # Réseau
+          date_prelevement,
+          annee,
+          code_prelevement,
+          code_support,
+          libelle_support,
+          code_appel_taxon,
+          libelle_taxon,
+          resultat_taxon,
+          abondance_relative,
+          code_qualification,
+          libelle_qualification,
+          reseau) } )
 
 # Message
     output$message_taxons <- shiny::renderUI({ # Message utilisateur

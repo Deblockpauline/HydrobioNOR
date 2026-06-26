@@ -1,6 +1,5 @@
 #' Interface utilisateur de l'application
 #' @description Fonction UI principale de l'application Shiny.
-#' @param request Paramètre interne shiny
 #' @noRd
 
 app_ui <- function(request) { # Fonction qui définit l'interface utilisateur
@@ -146,7 +145,7 @@ app_ui <- function(request) { # Fonction qui définit l'interface utilisateur
                   shiny::tabPanel(
                     title = "Plan d'échantillonnage",
                     shiny::br(),
-                    shiny::p("À venir Version 7") )
+                    mod_plan_echantillonnage_ui("plan_echantillonnage") )
                 ) ) ) ),
 
           # 3e onglet : Répartition

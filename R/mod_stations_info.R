@@ -1,7 +1,5 @@
 #' Module UI des informations station
-#'
 #' @param id Identifiant du module
-#'
 #' @noRd
 
 mod_station_infos_ui <- function(id) {
@@ -10,11 +8,9 @@ mod_station_infos_ui <- function(id) {
     shiny::uiOutput(ns("infos_station") ) ) }
 
 #' Module server des informations station
-#'
 #' @param id Identifiant du module
 #' @param donnees Reactive contenant les données de l'application
 #' @param station_selectionnee Reactive contenant le code station sélectionné
-#'
 #' @noRd
 
 mod_station_infos_server <- function(id, donnees, station_selectionnee) {

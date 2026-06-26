@@ -1,12 +1,8 @@
 #' Module de chargement des données
-#' @description
-#' Module Shiny qui télécharge le fichier `data_hydrobioNOR.rda`
+#' @description Module Shiny qui télécharge le fichier `data_hydrobioNOR.rda`
 #' depuis le dépôt GitHub, charge les objets dans un environnement temporaire
 #' et renvoie une liste de données.C'est inspiré de IDF mais
 #' la seule difference c'est que ca renvoie une réactive (donnees$table)
-#'
-#' @param id Identifiant du module Shiny
-#'
 #' @return Une reactive contenant la liste des objets chargés
 #' @noRd
 

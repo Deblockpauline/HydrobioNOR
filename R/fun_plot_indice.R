@@ -1,18 +1,14 @@
 #' Graphiques des indices biologiques par station
-#'
 #' @description Trace les graphiques des indices biologiques pour une station.
 #' Si EQR et classe sont disponibles : fond coloré + axe EQR.
-#' Si EQR et classe absents : résultat brut par année.
-#' I2M2 reste toujours sur une échelle 0-1.
-#' @param etat_bio Table des états biologiques
-#' @param station_id Code de la station sélectionnée
+#' Si EQR et classe absents : résultat brut par année et l'I2M2 reste toujours sur une échelle 0-1.
 #' @return Une liste avec graphiques plotly et tables
 #' @noRd
 
-fun_plot_indices_station <- function(etat_bio, station_id) { # Fonction graphiques indices
+fun_plot_indices_station <- function(etat_bio, station_id) {
 
 # Sécurité
-  if (is.null(etat_bio) || is.null(station_id) || is.na(station_id) || # # Si table absente, station absente et station NA
+  if (is.null(etat_bio) || is.null(station_id) || is.na(station_id) || # Si table absente, station absente et station NA
       station_id == "") { return(NULL) } # Station vide = arret
 
 # Préparation des données
@@ -28,8 +24,8 @@ fun_plot_indices_station <- function(etat_bio, station_id) { # Fonction graphiqu
       classe_indice = as.character(classe_indice), # Classe texte
       classe_indice = dplyr::if_else(
         is.na(classe_indice) | classe_indice == "", # Si classe absente
-        "Non renseigné", # Valeur remplacée
-        classe_indice ) ) # Classe gardée
+        "Non renseigné", # Valeur remplacée par Non renseigné
+        classe_indice ) ) # Sinon, on conserve la valeur existane
 
 # Definition des couleurs
   couleurs_classes <- c(
@@ -40,26 +36,29 @@ fun_plot_indices_station <- function(etat_bio, station_id) { # Fonction graphiqu
     "MEDIOCRE" = "#d73027", # Médiocre
     "Non renseigné" = "grey90" ) # Sans classe
 
-# Fonction pour tracer un graph
+# Fonction pour tracer un graph par indice qui sera ensuite injecter dans une boucle purr pour l'etendre a tout les indices de la station
     tracer_un_indice <- function(data_indice) {
 
-    nom_indice <- unique(data_indice$libelle_indice)[1] # recuperation du nom de l'indice
-    code_indice <- unique(data_indice$code_indice)[1] # Du code de l'indice
-    est_i2m2 <- grepl("I2M2", nom_indice) || code_indice == "7613" # Test si I2M2
-    est_ips <- grepl("IPS", nom_indice) || code_indice == "1022" # Test si IPS
-    est_ipr <- grepl("IPR", nom_indice) || code_indice == "7036" # Test si IPR
-    eqr_dispo <- any(!is.na(data_indice$eqr_indice)) # Verifie si EQR disponible
+    nom_indice <- unique(data_indice$libelle_indice)[1] # Recuperation du nom de l'indice
+    code_indice <- unique(data_indice$code_indice)[1] # Et du code de l'indice
+    est_i2m2 <- grepl("I2M2", nom_indice) || code_indice == "7613" # Test si I2M2 ou 7613 = True dans la colonne est_i2m2
+    est_ips <- grepl("IPS", nom_indice) || code_indice == "1022"
+    est_ipr <- grepl("IPR", nom_indice) || code_indice == "7036"
+    eqr_dispo <- any(!is.na(data_indice$eqr_indice)) # Verifie si au moins un EQR disponible
     classe_dispo <- any( # Verifie si la classe est disponible
       !is.na(data_indice$classe_indice) & # Classe non NA
         data_indice$classe_indice != "Non renseigné" ) # Classe renseignée
 
+    # Preparation
     data_indice <- data_indice %>% # Données d'un indice
       dplyr::arrange(annee_num) %>% # Tri année
-      dplyr::mutate( # Modifie
+
+       dplyr::mutate( # Modifie
         x_id = dplyr::row_number(), # Position axe x
-        y_plot = dplyr::case_when( # Si c'est
+        y_plot = dplyr::case_when( # Pour l'axe y, si c'est
           est_i2m2 & eqr_dispo ~ eqr_indice, # I2M2 -> EQR
           TRUE ~ resultat_indice ), # Sinon résultat
+
         texte_survol = paste0( # Texte de survol
           "Année : ", annee, # Année
           "<br>Indice : ", libelle_indice, # Indice
@@ -72,9 +71,10 @@ fun_plot_indices_station <- function(etat_bio, station_id) { # Fonction graphiqu
             classe_dispo, # Si classe dispo
             paste0("<br>Classe : ", classe_indice), # Ajout classe
             "" ) ) ) %>% # Sinon rien
-      dplyr::filter(!is.na(y_plot)) # Valeurs affichables
+      dplyr::filter(!is.na(y_plot)) # Ne garde que les lignes avec un valeur affichable en y (EQB ou resultats)
 
-    table_indice <- data_indice %>% # Table exportable
+    # Tableau exportable
+    table_indice <- data_indice %>%
       dplyr::select(
         code_station, # Station
         annee, # Année
@@ -86,7 +86,8 @@ fun_plot_indices_station <- function(etat_bio, station_id) { # Fonction graphiqu
         code_qualification, # Code qualification
         libelle_qualification ) # Qualification
 
-    data_fond <- data_indice %>% # Données pour le fond
+    # Fond coloré correspondant au classe
+    data_fond <- data_indice %>%
       dplyr::mutate(
         xmin = x_id - 0.5, # Début rectangle
         xmax = x_id + 0.5, # Fin rectangle
@@ -96,7 +97,8 @@ fun_plot_indices_station <- function(etat_bio, station_id) { # Fonction graphiqu
           est_ipr ~ 70, # Hauteur IPR
           TRUE ~ 20 ) ) # Hauteur autres indices
 
-    # Graph
+  #  Création du graph
+    # Base
     p <- ggplot2::ggplot(
       data_indice, # Données
       ggplot2::aes(
@@ -121,7 +123,8 @@ fun_plot_indices_station <- function(etat_bio, station_id) { # Fonction graphiqu
           values = couleurs_classes, # Couleurs classes
           guide = "none" ) } # Pas légende
 
-    p <- p + # Pour les ligne et les points
+    # Pour les lignes et points
+    p <- p +
       ggplot2::geom_line( # Ligne
         color = "grey35", # Couleur ligne
         linewidth = 0.7 ) + # Épaisseur ligne
@@ -226,7 +229,7 @@ fun_plot_indices_station <- function(etat_bio, station_id) { # Fonction graphiqu
           automargin = TRUE),
         showlegend = FALSE) # Pas de légende
 
-    list(
+    list( # Renvoie pour un indice par station selectionnée
       graph = graph_indice, # Graphique final
       table = table_indice ) } # Table finale
 
@@ -240,14 +243,11 @@ fun_plot_indices_station <- function(etat_bio, station_id) { # Fonction graphiqu
 
 
 #' Graphique des métriques I2M2
-#'
 #' @description Trace les métriques de l'I2M2 pour une station.
-#' @param metriques Table des métriques I2M2
-#' @param station_id Code de la station sélectionnée
 #' @return Un graphique plotly
 #' @noRd
 
-fun_plot_metriques_i2m2 <- function(metriques, station_id) { # Fonction métriques I2M2
+fun_plot_metriques_i2m2 <- function(metriques, station_id) {
 
   if (is.null(metriques) || is.null(station_id) ||is.na(station_id) || station_id == "") { # Si table absente, station absente, NA ou vide
     return(NULL) } # Arrêt
@@ -265,8 +265,8 @@ fun_plot_metriques_i2m2 <- function(metriques, station_id) { # Fonction métriqu
         "<br>Métrique : ", libelle_indice, # Métrique
         "<br>Valeur : ", round(resultat_indice, 3) ) ) %>% # Valeur
     dplyr::filter(
-      !is.na(annee_num), # Année présente
-      !is.na(resultat_indice) ) %>% # Valeur présente
+      !is.na(annee_num), # Enleve les années NA
+      !is.na(resultat_indice) ) %>% # Enleve les resultats NA
     dplyr::arrange(annee_num) # Tri année
 
   if (nrow(data_metriques) == 0) { return(NULL) }# Aucune donnée, arret

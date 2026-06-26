@@ -1,5 +1,4 @@
 #' Module UI diagnostic écologique SEEE
-#'
 #' @description Ce module sert à afficher les graphiques et tableaux concernant le diagnostic.
 #' Il fait appel aux fonctions définies dans fun_diagnostic_seee.
 #' @noRd
@@ -17,7 +16,6 @@ mod_communaute_diagnostic_eco_ui <- function(id) {
       shiny::column( # Deuxième colonne
         width = 8, # Largeur de la colonne
         shiny::uiOutput(ns("ui_annees_diag") ) ) ), # Choix des années
-
     shiny::br(), # Saut de ligne
     shiny::uiOutput(ns("message_diag")), # Message d'information
     shiny::br(), # Saut de ligne
@@ -73,7 +71,6 @@ mod_communaute_diagnostic_eco_ui <- function(id) {
 
 
 #' Module server diagnostic écologique SEEE
-#'
 #' @noRd
 
 mod_communaute_diagnostic_eco_server <- function(id,
@@ -175,7 +172,7 @@ mod_communaute_diagnostic_eco_server <- function(id,
           style = "color:#666; font-style:italic;",
           paste(
             "Aucun diagnostic SEEE disponible pour l'EQB sélectionné :",
-            choix_eqb_filtre() )
+            choix_eqb_filtre() ) )
       } else if (is.null(station_selectionnee())) { # Si aucune station n'est sélectionnée
         shiny::div(
           style = "color:#666; font-style:italic;",

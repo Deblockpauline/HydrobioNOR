@@ -1,5 +1,4 @@
 #' Module UI des indices biologiques
-#'
 #' @description Interface du sous-onglet Indices.
 #' @param id Identifiant du module
 #' @noRd
@@ -8,23 +7,22 @@ mod_communaute_indices_ui <- function(id) { # Fonction UI du module
   ns <- shiny::NS(id) # Namespace du module
   shiny::tagList( # Regroupe les elements UI
     shiny::h4("Indices biologiques"), # Titre partie indices
+    shiny::div(
+      style = "font-size: 12px; color: #555; line-height: 1.4;", # Style discret et lisible
+      shiny::p(
+        "Selon l'arrété du 27 juillet 2018, version EBio_CE_2018_v1.0.2.")),
     shiny::uiOutput(ns("message_indices")), # Message si pas de station ou pas de donnees
     shiny::uiOutput(ns("plots_indices")), # Zone des graphiques + tableaux
     shiny::br(), # Espace
+    shiny::hr(), # Ligne
     shiny::h4("Métriques de l'I2M2"), # Titre partie metriques
     shiny::uiOutput(ns("bloc_metriques_i2m2") ) ) } # Bloc dynamique metriques )
 
 #' Module server des indices biologiques
-#'
 #' @description Serveur du sous-onglet Indices.
-#' @param id Identifiant du module
-#' @param donnees Reactive contenant la liste des données
-#' @param station_selectionnee Reactive contenant le code de la station sélectionnée
-#' @param choix_qualification Filtre global qualification
-#' @param choix_eqb Filtre global EQB
 #' @noRd
 
-mod_communaute_indices_server <- function(id, donnees, station_selectionnee, choix_qualification = NULL, choix_eqb = NULL) { # Fonction server du module
+mod_communaute_indices_server <- function(id, donnees, station_selectionnee, choix_qualification = NULL, choix_eqb = NULL) {
 
   shiny::moduleServer(id, function(input, output, session) { # Debut module server
     ns <- session$ns # Namespace cote serveur
@@ -32,7 +30,7 @@ mod_communaute_indices_server <- function(id, donnees, station_selectionnee, cho
 # Graphiques des indices biologiques
     graphiques_indices <- shiny::reactive({ # Reactive qui cree les graphiques
       shiny::req(donnees()) # Attend les donnees
-      shiny::req(station_selectionnee()) # Attend une station
+      shiny::req(station_selectionnee()) # Attend une station selectionnée
       etat_bio_filtre <- donnees()$etat_bio # Table etat bio
       etat_bio_filtre <- etat_bio_filtre %>% # Filtre station avant les graph
         dplyr::filter(code_station == station_selectionnee()) # Station choisie
@@ -43,6 +41,7 @@ mod_communaute_indices_server <- function(id, donnees, station_selectionnee, cho
           length(choix_eqb()) > 0 && # Au moins 1 choix
           !("Tous" %in% choix_eqb()) && # Pas tous
           "libelle_support" %in% names(etat_bio_filtre)) { # Colonne existe
+
         supports_gardes <- dplyr::case_when( # Correspondance EQB/support
           choix_eqb()[1] == "Diatomées" ~ "Diatomées benthiques",
           choix_eqb()[1] == "Macrophytes" ~ "Macrophytes",
@@ -50,7 +49,7 @@ mod_communaute_indices_server <- function(id, donnees, station_selectionnee, cho
           choix_eqb()[1] == "Macroinvertébrés" ~ "Macroinvertébrés aquatiques",
           TRUE ~ NA_character_) # Sécurité
         etat_bio_filtre <- etat_bio_filtre %>% # Filtre par support
-          dplyr::filter(libelle_support %in% supports_gardes) } # Garde le bon EQB
+          dplyr::filter(libelle_support %in% supports_gardes) } # En réalisant la correspondance
 
       # Filtre qualification
       if (!is.null(choix_qualification) && # Filtre existe
@@ -61,7 +60,8 @@ mod_communaute_indices_server <- function(id, donnees, station_selectionnee, cho
         etat_bio_filtre <- etat_bio_filtre %>% # Filtre dans etat_bio
           dplyr::filter(libelle_qualification %in% choix_qualification()) } # Garde qualification
 
-      fun_plot_indices_station( # Appel la fonction
+      # Appel de la fonction pour la création des graphiques pour les indices
+      fun_plot_indices_station(
         etat_bio = etat_bio_filtre, # Donnees filtrées
         station_id = station_selectionnee()) } ) # Station choisie
 
@@ -69,7 +69,7 @@ mod_communaute_indices_server <- function(id, donnees, station_selectionnee, cho
     output$message_indices <- shiny::renderUI({ # Cree le message
       if (is.null(station_selectionnee()) || is.na(station_selectionnee()) || station_selectionnee() == "") { # Si pas de station
         return(
-          shiny::div( # Si aucune station de choisie
+          shiny::div(
             style = "color: #666; font-style: italic;",
             "Cliquez sur une station de la carte pour afficher ses indices biologiques.") ) } # Message
       plots <- graphiques_indices() # Recupere les graphiques
@@ -80,48 +80,46 @@ mod_communaute_indices_server <- function(id, donnees, station_selectionnee, cho
             "Aucune donnée d'indice biologique disponible pour cette station.") ) } # Message
       NULL } ) # Sinon pas de message
 
-# Création dynamique des graphiques + tableaux + boutons de téléchargement
-    output$plots_indices <- shiny::renderUI({ # Cree les sorties selon le nombre d'indices
+# Création de l'interphase
+    output$plots_indices <- shiny::renderUI({
       plots <- graphiques_indices() # Recupere la liste graph + table
-      if (is.null(plots) || length(plots) == 0) { return(NULL) }
+      if (is.null(plots) || length(plots) == 0) { return(NULL) } # Si c'est NULL on affiche rien
+
       shiny::tagList( # Regroupe tous les blocs
         purrr::map( # Boucle sur les indices
-          seq_along(plots), # Retourne le numero de chaque indice
+          seq_along(plots), # Retourne le numero de chaque indice exemple : IBD =1 IBMR=2 etc...
 
           function(i) { # Fonction pour 1 indice
-            nom_indice <- unique(plots[[i]]$table$libelle_indice)[1] # Nom indice
+            nom_indice <- unique(plots[[i]]$table$libelle_indice)[1] # Nom indice pour en faire un titre
             shiny::tagList( # Bloc pour 1 indice
-
               shiny::h5( # Titre graphique
                 paste0("Graphique de l'", nom_indice),
                 style = "font-weight: bold; margin-top: 15px;"), # Style titre
-
               plotly::plotlyOutput( # Sortie graphique
                 outputId = ns(paste0("plot_indice_", i)), # Id unique du graphique
                 height = "430px"), # Hauteur graphique
               shiny::br(), # Espace
-
               shiny::downloadButton( # Bouton CSV
                 outputId = ns(paste0("download_indice_", i)), # Id unique du bouton
                 label = "Télécharger les données (.csv)"), # Texte bouton
               shiny::br(), # Espace
-
               DT::DTOutput( # Sortie tableau
                 outputId = ns(paste0("table_indice_", i))), # Id unique du tableau
               shiny::br(), # Espace
               shiny::hr() ) } ) # Ligne séparation
      ) } )
 
-# Rendu des graphiques, tableaux et exports
+# Remplissage des emplacement crée au dessus
     shiny::observe({ # Observe pour creer les sorties
       plots <- graphiques_indices() # Recupere les graphiques/table
       if (is.null(plots) || length(plots) == 0) {return(NULL) }
        purrr::walk( # Boucle sans creer de liste
         seq_along(plots), # Numero de chaque indice
 
-        function(i) { # Pour chaque indice
+        # Fonction pour chaque indice
+        function(i) {
           local({ # Evite les soucis de boucle Shiny
-            ii <- i # Garde le bon numero
+            ii <- i # A chaque tout R mémorise 1, puis au suivant 2 etc...car sans cela, si par exemple on avait 3 indices R confondrait a afficherai 3 fois le meme
 
             # Nom des graphs
             output[[paste0("plot_indice_", ii)]] <- plotly::renderPlotly({ # Rendu du graphique
@@ -155,8 +153,8 @@ mod_communaute_indices_server <- function(id, donnees, station_selectionnee, cho
                   scrollX = TRUE)) # Scroll horizontal si besoin
             }, server = TRUE)
 
-
-            output[[paste0("download_indice_", ii)]] <- shiny::downloadHandler( # Telechargement CSV
+            # Export
+            output[[paste0("download_indice_", ii)]] <- shiny::downloadHandler(
               filename = function() { # Nom du fichier
                 nom_indice <- unique(plots[[ii]]$table$libelle_indice)[1] # Recupere le nom de l'indice
                 paste0("donnees_indice_", nom_indice, "_", station_selectionnee(), ".csv") }, # Nom final
@@ -189,8 +187,8 @@ mod_communaute_indices_server <- function(id, donnees, station_selectionnee, cho
           !is.null(choix_eqb()) && # Valeur existe
           length(choix_eqb()) > 0 && # Au moins 1 choix
           !("Tous" %in% choix_eqb()) && # Pas tous
-          choix_eqb()[1] != "Macroinvertébrés") { # Pas I2M2
-        table_metriques <- table_metriques[0, ]  }# Vide les metriques
+          choix_eqb()[1] != "Macroinvertébrés") { # Si le choix n'est pas MIV
+        table_metriques <- table_metriques[0, ]  }# Alors les metriques ne sont pas affichées
 
       # Filtre qualification
       if (!is.null(choix_qualification) && # Filtre existe
@@ -202,7 +200,7 @@ mod_communaute_indices_server <- function(id, donnees, station_selectionnee, cho
           dplyr::filter(libelle_qualification %in% choix_qualification()) } # Qualification choisie
       table_metriques} ) # Retour de la table filtree
 
-# Bloc dynamique des métriques I2M2
+# Interphase des métriques I2M2
     output$bloc_metriques_i2m2 <- shiny::renderUI({ # Affiche ou non la partie metriques
       shiny::req(donnees()) # Attend les donnees
       shiny::req(station_selectionnee()) # Attend une station
@@ -236,7 +234,7 @@ mod_communaute_indices_server <- function(id, donnees, station_selectionnee, cho
 
       shiny::req(graph) # Bloque si null
       graph %>%
-        plotly::config(
+        plotly::config( # Nom de l'export
           toImageButtonOptions = list(
             format = "png", # Format
             filename = paste0(

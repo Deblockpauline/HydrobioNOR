@@ -1,14 +1,10 @@
 #' Application Server
-#'
-#' @description Fonction serveur principale de l'application Shiny.
-#' Elle coordonne les différents modules serveur : chargement des données, gestion des filtres,
-#' affichage de la carte des stations, affichage des onglets
-#' Le server fait fonctionner les differents modules
+#' @description Le server contient tout la logique, il fait fonctionner les differents modules
+#' Reactive = si les données changent -> mise a jour automatique
 #' @noRd
 
 app_server <- function(input, output, session) {
 
-  # Reactive = si les données changent -> mise a jour automatique
   # Chargement des données
   donnees <- mod_load_data_server("donnees") # Renvoie la reactive donnees() avec les differentes tables
 
@@ -19,13 +15,13 @@ app_server <- function(input, output, session) {
 
   # Sélecteur compartiment biologique
   choix_eqb <- mod_selecteur_eqb_server(
-    id = "eqb")
+    id = "eqb") # Ici on ne transemt pas données car c'est une liste deja defini avant
 
   # Sélecteur UH
   choix_uh <- mod_selecteur_UH_server(
     id = "uh",
     stations = shiny::reactive(donnees()$stations), # On transmet uniquement la table stations car la variable UH s'y trouve
-    choix_departements = choix_departements ) # Reactive contenant les départements sélectionnés
+    choix_departements = choix_departements ) # Reactive contenant les départements sélectionnés pour que les UH se mettent a jour
 
   # Sélecteur réseau
   choix_reseau <- mod_selecteur_reseau_server(
@@ -36,6 +32,9 @@ app_server <- function(input, output, session) {
   choix_qualification <- mod_selecteur_qualification_server(
     id = "qualification",
     donnees = donnees)
+
+#--------------------------------------------------------------------------------------------------
+# Pour l'onglet Station
 
   # Carte des stations dans l'onglet Station
   station_selectionnee <- mod_station_carte_server(
@@ -65,7 +64,10 @@ app_server <- function(input, output, session) {
     donnees = donnees,
     station_selectionnee = station_selectionnee)
 
-  # Carte des stations dans l'onglet Communautés
+#--------------------------------------------------------------------------------------------------
+# Pour l'onglet communautés
+
+  # Carte des stations
   station_selectionnee_commu <- mod_station_carte_server(
     id = "station_carte_commu",
     donnees = donnees, # On récupère les mêmes données
@@ -108,6 +110,16 @@ app_server <- function(input, output, session) {
     donnees = donnees,
     station_selectionnee = station_selectionnee_commu,
     choix_eqb = choix_eqb)
+
+  # Pour les plans d'échantillonnages
+  mod_plan_echantillonnage_server(
+    id = "plan_echantillonnage",
+    donnees = donnees,
+    station_selectionnee = station_selectionnee_commu,
+    choix_eqb = choix_eqb)
+
+#--------------------------------------------------------------------------------------------------
+# Pour l'onglet répartition
 
   # Carte de répartition des taxons
   mod_repartition_carte_server(

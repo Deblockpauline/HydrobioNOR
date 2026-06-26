@@ -1,11 +1,7 @@
 #' Prépare les informations de surface du bassin versant
 #'
-#' @description
-#' À partir du code station, cette fonction récupère l'identifiant du bv,
+#' @description À partir du code station, cette fonction récupère l'identifiant du bv,
 #' trouve la surface dans la table surface_BV puis calcule la surface en km².
-#'
-#' @param donnees Liste contenant les objets de l'application
-#' @param station_id Code de la station sélectionnée
 #' @return Les informations sous forme de tableau
 #' @noRd
 

@@ -1,5 +1,4 @@
 #' Carte de répartition des taxons UI
-#'
 #' @description Module Shiny permettant d'afficher la répartition des taxons
 #' Inspiration de mod_station_carte
 #' @noRd
@@ -37,15 +36,7 @@ mod_repartition_carte_ui <- function(id, hauteur = "700px") { # Fonction UI du m
 }
 
 #' Carte de répartition des taxons server
-#'
 #' @description Module Shiny qui affiche les stations où les taxons sont présents
-#' @param id Identifiant du module
-#' @param donnees Reactive avec les données
-#' @param choix_departements Reactive avec départements sélectionnés
-#' @param choix_eqb Reactive avec EQB sélectionnés
-#' @param choix_uh Reactive avec UH sélectionnées
-#' @param choix_reseau Reactive avec réseau sélectionnés
-#' @param choix_qualification Reactive avec qualif sélectionnées
 #' @noRd
 
 mod_repartition_carte_server <- function(id,
@@ -129,16 +120,16 @@ mod_repartition_carte_server <- function(id,
       df_export <- donnees()$taxons |> # Table taxons brute
         dplyr::mutate(
           eqb = dplyr::case_when( # Creation EQB
-            code_support == "10" ~ "Diatomées", # Association support
-            code_support == "13" ~ "Macroinvertébrés", # Association support
-            code_support == "27" ~ "Macrophytes", # Association support
-            code_support == "4" ~ "Poissons", # Association support
+            code_support == "10" ~ "Diatomées",
+            code_support == "13" ~ "Macroinvertébrés",
+            code_support == "27" ~ "Macrophytes",
+            code_support == "4" ~ "Poissons",
             TRUE ~ NA_character_), # Sécurité
           date_prelevement = as.Date(date_prelevement)) |> # Conversion date
         dplyr::filter(
           libelle_taxon %in% input$taxon_selectionne) # Filtre les taxons sélectionnés
 
-      if (!is.null(donnees()$stations) && "reseau" %in% names(donnees()$stations)) { # Si stations existe
+      if (!is.null(donnees()$stations) && "reseau" %in% names(donnees()$stations)) { # Si stations existe ET que la colonne reseau aussi
         stations_infos <- donnees()$stations |> # Table stations
           sf::st_drop_geometry() |> # Supprime la géométrie si sf
           dplyr::select(code_station, code_dep, reseau, UH_calculee) |> # Colonnes utiles
@@ -150,10 +141,10 @@ mod_repartition_carte_server <- function(id,
 
       df_export <- filtrer_donnees( # Applique les filtres globaux
         data = df_export, # Table export
-        choix_departements = filtre_dep, # Filtre département
-        choix_eqb = filtre_eqb, # Filtre EQB
-        choix_reseau = filtre_reseau, # Filtre réseau
-        choix_qualification = filtre_qualification ) # Filtre qualification
+        choix_departements = filtre_dep,
+        choix_eqb = filtre_eqb,
+        choix_reseau = filtre_reseau,
+        choix_qualification = filtre_qualification )
 
       if (!is.null(filtre_uh) && # Filtre UH existe
           length(filtre_uh) > 0 && # Au moins 1 choix
@@ -261,19 +252,19 @@ mod_repartition_carte_server <- function(id,
         dplyr::mutate(
           id_ligne = dplyr::row_number() ) |> # Numéro de ligne
         sf::st_drop_geometry() |> # Supprime temporairement la géométrie
-        dplyr::group_by(
+        dplyr::group_by( # Regroupe par
           code_station, # Code station
           libelle_station ) |> # Nom station
-        dplyr::summarise(
+        dplyr::summarise( # Resume
           nb_taxons = dplyr::n_distinct(libelle_taxon), # Nombre de taxons sélectionnés présents
-          taxons_resume = paste(
+          taxons_resume = paste( # Construction du texte a afficher au clic
             unique(paste0(
-              "<b>", libelle_taxon, "</b><br/>",
-              resume,
-              "<br/>Qualification : ", libelle_qualification ) ),
+              "<b>", libelle_taxon, "</b><br/>", # Nom de taxon
+              resume, # Abondance sous forme de resumé
+              "<br/>Qualification : ", libelle_qualification ) ), # Qualif
             collapse = "<br/><br/>" ),
-          eqb = paste(sort(unique(eqb)), collapse = ", "), # Liste des EQB
-          reseau = paste(sort(unique(reseau)), collapse = ", "), # Liste des réseaux
+          eqb = paste(sort(unique(eqb)), collapse = ", "), # Liste des EQB present au clic
+          reseau = paste(sort(unique(reseau)), collapse = ", "), # Liste des réseaux de la station
           abondance_totale = sum(abondance_moyenne, na.rm = TRUE), # Somme des abondances moyennes
           id_ligne = dplyr::first(id_ligne), # Ligne pour récupérer la géométrie
           .groups = "drop" ) |> # Supprime le regroupement
@@ -285,7 +276,7 @@ mod_repartition_carte_server <- function(id,
 
       df <- df |> # Ajoute le rayon des cercles
         dplyr::mutate(
-          rayon_cercle = 5 + (sqrt(abondance_totale) / sqrt(max_abondance)) * 20) # Taille cercle
+          rayon_cercle = 5 + (sqrt(abondance_totale) / sqrt(max_abondance)) * 20) # sqrt = racine carré + normalisation
 
       coords <- sf::st_coordinates(df) # Coordonnées des stations
       centre_lng <- mean(coords[, 1], na.rm = TRUE) # Longitude moyenne
@@ -330,12 +321,12 @@ mod_repartition_carte_server <- function(id,
       shiny::req(input$taxon_selectionne) # Attend au moins un taxon sélectionné
       plot <- fun_plot_repartition_taxon( # Appelle la fonction graphique
         donnees = donnees(), # Liste de données
-        choix_departements = choix_departements(), # Filtre département
-        choix_eqb = choix_eqb(), # Filtre EQB
-        choix_uh = choix_uh(), # Filtre UH
-        choix_reseau = choix_reseau(), # Filtre réseau
-        choix_qualification = choix_qualification(), # Filtre qualification
-        taxon_selectionne = input$taxon_selectionne ) # Taxons choisis
+        choix_departements = choix_departements(),
+        choix_eqb = choix_eqb(),
+        choix_uh = choix_uh(),
+        choix_reseau = choix_reseau(),
+        choix_qualification = choix_qualification(),
+        taxon_selectionne = input$taxon_selectionne )
       shiny::validate(
         shiny::need(!is.null(plot), "Aucune donnée disponible pour ce ou ces taxons.") )
       plot } ) # Affiche le graphique

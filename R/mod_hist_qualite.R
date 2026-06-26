@@ -1,12 +1,6 @@
 #' Module UI des histogrammes de qualité
-#'
-#' @description
-#' Module ui affichant les histogrammes de qualité écologique.
-#' Ce module contient :le graphique plotly et un texte explicatif
-#'
-#' @param id Identifiant du module Shiny
-#'
-#' @return Un tagList contenant le graphique et le texte explicatif
+#' @description Module ui affichant les histogrammes de qualité écologique.
+#' Contient le graphique plotly et un texte explicatif
 #' @noRd
 
 mod_hist_qualite_ui <- function(id) {
@@ -19,12 +13,12 @@ mod_hist_qualite_ui <- function(id) {
 
     # Bloc de texte explicatif sous le graphique
     shiny::div(
-      style = "font-size: 12px; color: #555; line-height: 1.4;", # Style discret et lisible
+      style = "font-size: 12px; color: #555; line-height: 1.4;", # Style
       shiny::p(
         "Pour rappel, ce graphique est incompatble avec le filtre qualité incorrecte car il n'exsite pas de données"),
-      shiny::p( # Description générale du graphique
+      shiny::p(
         "Ce graphique présente la répartition des stations selon leur classe de qualité écologique pour différents indices biologiques (I2M2, IBD, IBMR, IPR, IBG équivalent), en fonction des cycles de la Directive Cadre sur l’Eau (DCE)." ),
-      shiny::p(  # Explication de la structure des barres
+      shiny::p(
         "Chaque barre correspond à une période donnée et est empilée par classe de qualité (Très bon, Bon, Moyen, Médiocre, Mauvais ou Non évalué). La hauteur totale de la barre représente le nombre de stations distinctes pour cet indice et cette période, tandis que les couleurs indiquent la répartition des classes de qualité. Cela permet de voir :"),
       shiny::tags$ul(   # Liste des interprétations possibles
         shiny::tags$li("la distribution des états écologiques des stations pour chaque indice biologique"),
@@ -33,16 +27,7 @@ mod_hist_qualite_ui <- function(id) {
 }
 
 #' Module server des histogrammes de qualité
-#'
-#' @description
-#' Permet de préparer les données , de générer le graphique et de l'afficher en ploty
-#'
-#' @param id Identifiant du module Shiny
-#' @param donnees Reactive contenant les données de l'application
-#' @param choix_departements Reactive contenant le ou les départements sélectionnés
-#' @param choix_eqb Reactive contenant le compartiment biologique sélectionné
-#' @param choix_uh Reactive contenant l'UH sélectionnée
-#'
+#' @description Permet de préparer les données , de générer le graphique et de l'afficher en ploty
 #' @return Un graphique interactif affiché dans l'UI
 #' @noRd
 
@@ -73,7 +58,7 @@ mod_hist_qualite_server <- function(id,
         shiny::need(
           !is.null(df) && nrow(df) > 0,
           "Aucune donnée disponible pour cette combinaison de filtres.") )
-      p <- fun_plot_qualite(df) # Création du graphique ggplot
+      p <- fun_plot_qualite(df) # Création du graphique ggplot en appellant la fonction
       plotly::ggplotly(
         p,
         tooltip = "text" ) %>%
@@ -89,9 +74,8 @@ mod_hist_qualite_server <- function(id,
             filename = "qualite_indices", # Nom du fichier
             height = 800, # Hauteur image
             width = 1200, # Largeur image
-            scale = 2 )# Qualité
-        ) } )
-  } ) }
+            scale = 2 ) )# Qualité
+       } ) } ) }
 
 ## À appeler dans l'UI
 # mod_hist_qualite_ui("hist_qualite_commu")
