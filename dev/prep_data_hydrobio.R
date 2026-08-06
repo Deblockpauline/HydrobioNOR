@@ -17,7 +17,7 @@ devtools::load_all(".") # Charge les packages et fonctions locales
 # Stations
 stations <- get_hydrobio_stations_hydrobio(code_region = "28") %>%
   distinct(code_station_hydrobio, .keep_all = TRUE) # Sert a gardrer 1 ligne par station
-codes <- stations$code_station # Extraction des codes stations pour la suite
+codes <- stations$code_station_hydrobio # Extraction des codes stations pour la suite
 
 # Fonction qui permet la sécurité
 safe_get <- function(fun, ..., sleep = 0.2) { # Permet de faire des pauses de 0.2 secondes
@@ -56,11 +56,11 @@ indices <- map_dfr(codes, function(cd) {
 dates_station <- bind_rows(
   taxons %>%
     transmute(
-      code_station = as.character(code_station),
+      code_station = as.character(code_station_hydrobio),
       date_prelevement = as.Date(date_prelevement) ),
   indices %>%
     transmute(
-      code_station = as.character(code_station),
+      code_station = as.character(code_station_hydrobio),
       date_prelevement = as.Date(date_prelevement) ) ) %>%
   filter(!is.na(code_station), !is.na(date_prelevement) ) %>%
   group_by(code_station) %>%
@@ -843,25 +843,25 @@ donnee_carte <- stations %>%
 # Table donnee_carte_taxon
 donnee_carte_taxon <- taxons %>%
   mutate(
-    date_prelevement = as.Date(date_prelevement), # Pour les dates
-    annee = year(date_prelevement) ) %>% # Année du prélèvement
+    date_prelevement = as.Date(date_prelevement),
+    annee = year(date_prelevement) ) %>%
   group_by(
     code_station,
-    libelle_station, # Regroupement
+    libelle_station,
     code_support,
     libelle_taxon,
     code_appel_taxon,
     code_qualification,
     libelle_qualification ) %>%
   summarise(
-    abondance_moyenne = mean(resultat_taxon, na.rm = TRUE), # Moyenne de l'abondance
-    abondance_min = min(resultat_taxon, na.rm = TRUE), # Abondance minimale
-    abondance_max = max(resultat_taxon, na.rm = TRUE), # Abondance maximale
-    annee_min = min(annee, na.rm = TRUE), # Année minimale
-    annee_max = max(annee, na.rm = TRUE), # Année maximale
-    code_prelevement = paste(unique(code_prelevement), collapse = " ; "), # Regroupe les codes prélèvements
-    date_prelevement = paste(sort(unique(date_prelevement)), collapse = " ; "), # Regroupe les dates
-    resultat_taxon = paste(unique(resultat_taxon), collapse = " ; "), # Regroupe les résultats taxons
+    abondance_moyenne = mean(resultat_taxon, na.rm = TRUE),
+    abondance_min = min(resultat_taxon, na.rm = TRUE),
+    abondance_max = max(resultat_taxon, na.rm = TRUE),
+    annee_min = min(annee, na.rm = TRUE),
+    annee_max = max(annee, na.rm = TRUE),
+    code_prelevement = paste(unique(code_prelevement), collapse = " ; "),
+    date_prelevement = paste(sort(unique(date_prelevement)), collapse = " ; "),
+    resultat_taxon = paste(unique(resultat_taxon), collapse = " ; "),
     .groups = "drop") %>%
   mutate(
     eqb = dplyr::case_when(
@@ -869,45 +869,29 @@ donnee_carte_taxon <- taxons %>%
       code_support == "13" ~ "Macroinvertébrés",
       code_support == "27" ~ "Macrophytes",
       code_support == "4" ~ "Poissons",
-      TRUE ~ NA_character_), # Associer chaque code_support à son EQB
-    abondance_min_affichee = sub("\\.?0+$", "", sprintf("%.3f", abondance_min)), # Format abondance min
-    abondance_max_affichee = sub("\\.?0+$", "", sprintf("%.3f", abondance_max)), # Format abondance max
+      TRUE ~ NA_character_),
+    abondance_min_affichee = sub("\\.?0+$", "", sprintf("%.3f", abondance_min)),
+    abondance_max_affichee = sub("\\.?0+$", "", sprintf("%.3f", abondance_max)),
     resume = paste0(
-      "abondance: ",
-      abondance_min_affichee,
-      "-",
-      abondance_max_affichee,
-      " (",
-      annee_min,
-      "-",
-      annee_max,
-      ")" ), # Résumé affiché dans le popup
+      "abondance: ", abondance_min_affichee, "-", abondance_max_affichee,
+      " (", annee_min, "-", annee_max, ")" ),
     hover = paste0(
       "<b>", libelle_taxon, "</b><br>",
-      "<em>", libelle_station, "</em><br><br>",
-      resume ) ) %>% # Texte au survol
+      "<em>", libelle_station, "</em><br><br>", resume ) ) %>%
   left_join(
     stations %>%
       st_drop_geometry() %>%
-      select(
-        code_station,
-        code_dep,
-        coordonnee_x,
-        coordonnee_y,
-        reseau ), # Récupère les données utiles
+      select(code_station, code_dep, coordonnee_x, coordonnee_y, reseau),
     by = "code_station" ) %>%
   filter(
     !is.na(coordonnee_x),
-    !is.na(coordonnee_y) ) %>% # Retire les lignes sans coordonnées
-  st_as_sf(
-    coords = c("coordonnee_x", "coordonnee_y"),
-    crs = 2154,
-    remove = FALSE) %>% # Transformation en objet spatial
+    !is.na(coordonnee_y) ) %>%
   select(
     code_dep,
     code_station,
     reseau,
-    geometry,
+    coordonnee_x,   # remplace geometry
+    coordonnee_y,   # remplace geometry
     libelle_station,
     code_support,
     eqb,
@@ -946,9 +930,9 @@ tc_diat <- readxl::read_excel("TCv1.3_DIAT.xlsx")
 taxons_diat <- taxons %>%
   filter(code_support == "10")  # Prendre que les DIA
 export_diat_a <- read_csv2( # Lecture des 2 fichiers exportés du Sandre
-  "C:/Users/pauline.deblock/Documents/stage Pauline/R/hydrobioNOR/données/export_1775210580.csv")
+  "C:/Users/pauline.deblock/Documents/stage Pauline/R/hydrobioNOR/données/extraction/export_1775210580.csv")
 export_diat_b <- read_csv2(
-  "C:/Users/pauline.deblock/Documents/stage Pauline/R/hydrobioNOR/données/export_diat1.csv")
+  "C:/Users/pauline.deblock/Documents/stage Pauline/R/hydrobioNOR/données/extraction/export_diat1.csv")
 export_diat <- bind_rows( # Filtrer chaque table sur CdThemeTaxon = 5 puis les fusionner
   export_diat_a %>% filter(as.character(CdThemeTaxon) == "5"),
   export_diat_b %>% filter(as.character(CdThemeTaxon) == "5")) %>%
@@ -1185,6 +1169,39 @@ resume_liste <- taxons %>%
       paste0(min(nb_taxons, na.rm = TRUE), "-", max(nb_taxons, na.rm = TRUE) ) ),
     .groups = "drop")
 
+##### Pour les fonds de carte ######
+# Departement chemin : "\\ad.intra\dfs\COMMUNS\REGIONS\nor\DR\OFB\SIG\DR\REFERENTIEL\BDCARTO\BDC_4-0_SHP_LAMB93_R28-ED211\ADMINISTRATIF\DEPARTEMENT.shp"
+#region chemin: "\\ad.intra\dfs\COMMUNS\REGIONS\nor\DR\OFB\SIG\DR\REFERENTIEL\BDCARTO\BDC_4-0_SHP_LAMB93_R28-ED211\ADMINISTRATIF\REGION.shp"
+#bassin hydro : "\\ad.intra\dfs\COMMUNS\REGIONS\nor\DR\OFB\SIG\DR\REFERENTIEL\BD TOPAGE\NOR_BassinHydrographique_FXX.gpkg"
+# Bassins versants : "C:/Users/pauline.deblock/Documents/stage Pauline/R/hydrobioNOR/données/couche BV/BV_NOR.shp"
+#mettre les limites de region de NOR
+limites_region <-  sf::st_read("//ad.intra/dfs/COMMUNS/REGIONS/nor/DR/OFB/SIG/DR/REFERENTIEL/BDCARTO/BDC_4-0_SHP_LAMB93_R28-ED211/ADMINISTRATIF/DEPARTEMENT.shp") %>%
+  dplyr::filter(INSEE_REG == "28") %>% #filtre de normandie
+  sf::st_transform(crs = 4326) %>%
+  rmapshaper::ms_simplify() #pour simplifier
+limites_region_l <- limites_region %>%
+  sf::st_cast(to = "LINESTRING") #trace les contours comme IDF
+
+# Faire les limites des bassins, meme fonctionnement que region
+limites_cours_eau <- sf::st_read(
+  dsn ="//ad.intra/dfs/COMMUNS/REGIONS/nor/DR/OFB/SIG/DR/REFERENTIEL/BD TOPAGE/NOR_CoursEau_FXX.gpkg") %>%
+  sf::st_transform(crs = 4326) %>%
+  rmapshaper::ms_simplify()
+
+#### Bassins versants ####
+limites_bv <- sf::st_read(
+  "C:/Users/pauline.deblock/Documents/stage Pauline/R/hydrobioNOR/données/couche BV/BV_NOR.shp",
+  quiet = TRUE) %>%
+  sf::st_make_valid() %>%                # Sécurise les géométries si besoin
+  sf::st_transform(crs = 4326) %>%       # Projection compatible leaflet
+  rmapshaper::ms_simplify(keep = 0.08)   # Allège un peu la couche
+# On garde uniquement les contours des bassins versants pour ne pas surcharger la carte
+limites_bv_l <- limites_bv %>%
+  sf::st_cast("MULTILINESTRING")
+
+####Table EEE ####
+eee<- readxl::read_excel("Liste EEE 20260723.xlsx")
+
 #### Définition des acronymes des indices#####
 # Les codes des indices =  acronymes pour une meilleure lisibilité
 acronymes_indices <- c(
@@ -1211,7 +1228,6 @@ save( stations,
       date_donnees,
       indices_etat_bio,
       acronymes_indices,
-      valeur_seuil_taxon,
       resume_liste,
       entree_inv,
       diagnostic_inv,
@@ -1240,4 +1256,10 @@ save( stations,
       surface_BV,
       donnee_carte,
       donnee_carte_taxon,
-  file = "C:/Users/pauline.deblock/Documents/stage Pauline/R/hydrobioNOR/dev/data_hydrobioNOR.rda")
+      limites_bv_l,
+      limites_cours_eau,
+      limites_region_l,
+      eee,
+      file = "C:/Users/pauline.deblock/Documents/stage Pauline/R/hydrobioNOR/dev/data_hydrobioNOR.rda")
+
+
