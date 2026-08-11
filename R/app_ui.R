@@ -155,5 +155,42 @@ app_ui <- function(request) { # Fonction qui définit l'interface utilisateur
             shiny::fluidRow(
               shiny::column(
                 width = 12, # Pour afficher la carte de repartion
-                mod_repartition_carte_ui("repartition_carte", hauteur = "500px") ) ) )
+                mod_repartition_carte_ui("repartition_carte", hauteur = "500px") ) ) ),
+
+          # 4e onglet : Valorisation
+          shiny::tabPanel(
+            title = "Valorisation",
+            shiny::br(),
+
+            # Carte en haut sur toute la largeur
+            shiny::fluidRow(
+              shiny::column(
+                width = 12,
+                mod_station_carte_ui("station_carte_valo", hauteur = "500px") ) ),
+            shiny::br(), # Retour a la ligne
+
+            # Sous-onglets sous la carte
+            shiny::fluidRow(
+              shiny::column(
+                width = 12,
+                shiny::tabsetPanel(
+
+                  # 1er sous-onglet : Diversité
+                  shiny::tabPanel(
+                    title = "Diversité",
+                    shiny::br(),
+                    mod_diversite_ui("diversite") ),
+
+                  # 2eme sous-onglet: Suivi alluvial
+                  shiny::tabPanel(
+                    title = "Suivi",
+                    shiny::br(),
+                    mod_suivi_ui("suivi") ),
+
+                  # 3eme sous-onglet: Tendance
+                  shiny::tabPanel(
+                    title = "Tendance",
+                    shiny::br(),
+                    mod_tendance_ui("tendance") )
+                  ) ) ) )
         ) ) ) ) }

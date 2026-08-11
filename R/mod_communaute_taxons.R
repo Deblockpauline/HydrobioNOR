@@ -169,7 +169,8 @@ mod_communaute_taxons_server <- function(id,
         shiny::need(nrow(taxons_filtres()) > 0, "Aucune donnée disponible.") ) # Besoin données
 
       fun_plot_taxons_station( # Appel de la fonction
-        taxons = taxons_filtres()) %>% # Données filtrées
+        taxons = taxons_filtres(),
+        eee = donnees()$eee) %>% # Données filtrées
         plotly::config(
           toImageButtonOptions = list(
             format = "png", # Format

@@ -58,6 +58,33 @@ mod_communaute_diagnostic_eco_ui <- function(id) {
           Anthrop. BV = anthropisation du bassin versant.
           </div>") ) ),
 
+    # Description des pressions
+    shiny::br(),
+    shiny::hr(),
+    shiny::br(),
+    shiny::HTML(
+      "<div style='font-size:13px; color:#444; line-height:1.5; margin-bottom:15px;'>
+  <b>Signification des pressions :</b><br>
+  <ul style='margin-top:5px; margin-bottom:0;'>
+    <li><b>MO</b> : pollution par les matières organiques.</li>
+    <li><b>Mat.N</b>: pollution azotée, principalement d'origine agricole ou liée aux eaux usées.</li>
+    <li><b>NO3</b> :  présence de nitrates, principalement issus des apports d'engrais agricoles et du lessivage des sols.</li>
+    <li><b>Mat.P</b> : pollution phosphorée pouvant favoriser l'eutrophisation.</li>
+    <li><b>MES</b> : présence de particules en suspension pouvant dégrader les habitats aquatiques.</li>
+    <li><b>HAP</b> : contamination par des hydrocarbures issus notamment de la combustion.</li>
+    <li><b>Pest.</b> : contamination par les produits phytosanitaires (herbicides, insecticides et fongicides).</li>
+    <li><b>Micropoll. org.</b> : présence de micropolluants organiques (PCB, solvants, résidus industriels, etc.).</li>
+    <li><b>Micropoll. min.</b> : présence de micropolluants minéraux, notamment des métaux.</li>
+    <li><b>Acidif.</b> : acidification du milieu aquatique.</li>
+    <li><b>Ripisylve</b> : dégradation de la végétation des berges.</li>
+    <li><b>Colmatage</b> : accumulation de sédiments fins obstruant le substrat.</li>
+    <li><b>Voies com.</b> : impact des infrastructures de transport sur le milieu.</li>
+    <li><b>Urbanisation</b> : artificialisation des sols et développement urbain.</li>
+    <li><b>Instab. hydro.</b> : modification du régime hydrologique du cours d'eau.</li>
+    <li><b>Anthrop. BV</b> : pression globale exercée par les activités humaines sur le bassin versant.</li>
+  </ul>
+  </div>"),
+
      # Partie tableau
     shiny::br(), # Saut de ligne
     shiny::h4("Données"), # Titre de la partie tableau
@@ -283,3 +310,9 @@ mod_communaute_diagnostic_eco_server <- function(id,
             row.names = FALSE,
             fileEncoding = "UTF-8" ) } )
   } ) }
+
+## À appeler dans l'UI
+# mod_communaute_diagnostic_eco_ui("diagnostic_eco")
+
+## À appeler dans le server
+#   mod_communaute_diagnostic_eco_server("diagnostic_eco")

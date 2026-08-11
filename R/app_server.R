@@ -130,4 +130,36 @@ app_server <- function(input, output, session) {
     choix_uh = choix_uh,
     choix_reseau = choix_reseau,
     choix_qualification = choix_qualification)
+
+#-----------------------------------------------------------------------------------------------
+# Pour l'onglet valorisation
+
+  # Carte des stations
+  station_selectionnee_valo <- mod_station_carte_server(
+    id = "station_carte_valo",
+    donnees = donnees, # On récupère les mêmes données
+    choix_departements = choix_departements, # On applique les mêmes filtres globaux
+    choix_eqb = choix_eqb,
+    choix_uh = choix_uh,
+    choix_reseau = choix_reseau,
+    choix_qualification = choix_qualification) # Renvoie la station sélectionnée dans l'onglet Communautés
+
+  # Onglet des indices de diversité
+  mod_diversite_server(
+    id = "diversite",
+    donnees = donnees,
+    station_selectionnee = station_selectionnee_valo )
+
+  # Onglet suivi avec le diagramme alluvial
+  mod_suivi_server(
+    id = "suivi",
+    donnees = donnees,
+    station_selectionnee = station_selectionnee_valo )
+
+  # Onglet pour les tendances
+  mod_tendance_server(
+    id = "tendance",
+    donnees = donnees,
+    station_selectionnee = station_selectionnee_valo )
+
 }

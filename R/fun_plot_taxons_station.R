@@ -4,8 +4,15 @@
 #' @return Graphique plotly
 #' @noRd
 
-fun_plot_taxons_station <- function(taxons) {
+fun_plot_taxons_station <- function(taxons, eee) {
   df <- taxons # Copie de la table filtrée
+
+# Liste des EEE
+  eee_taxons <- eee |> # Table des EEE
+    dplyr::filter(!is.na(libelle_taxon)) |> # Enlève les noms vides
+    dplyr::distinct(libelle_taxon) |> # Garde un nom par espèce
+    dplyr::pull(libelle_taxon) # Extrait les noms des EEE
+
   ordre_taxons <- df |> # Création de l'ordre des taxons
     dplyr::distinct(libelle_taxon) |> # Garde 1 ligne par taxon
     dplyr::arrange(libelle_taxon) |> # Trie par ordre alphabétique
@@ -20,6 +27,21 @@ fun_plot_taxons_station <- function(taxons) {
   hauteur_graph <- max( # Définit la hauteur du graphique
     650, # Hauteur minimale
     length(unique(df$libelle_taxon)) * 28) # Augmente selon le nb de taxons
+
+
+# Création des labels de l'axe Y
+  labels_taxons <- setNames(
+    vapply(
+      ordre_taxons,
+      function(x) {
+        if (x %in% eee_taxons) {
+          paste0(
+            "<span style='color:#2E8B57;'><b>",
+            x,
+            "</b></span>" )
+        } else { x }  },
+      character(1)),
+    ordre_taxons  )
 
   p <- ggplot2::ggplot( # Création du ggplot
     df, # Données utilisées
@@ -43,6 +65,8 @@ fun_plot_taxons_station <- function(taxons) {
       range = c(1, 10)) + # Taille min et max
     ggplot2::scale_x_continuous( # Paramètres axe X
       breaks = sort(unique(df$annee) ) ) + # Affiche toutes les années
+    ggplot2::scale_y_discrete( # Paramètres axe Y
+      labels = labels_taxons ) + # Colore les noms des EEE
     ggplot2::labs( # Titres du graphique
       x = NULL, # Pas de titre axe X
       y = NULL, # Pas de titre axe Y
@@ -72,4 +96,5 @@ fun_plot_taxons_station <- function(taxons) {
       yaxis = list( # Paramètres axe Y
         title = "", # Pas de titre
         automargin = TRUE)) # Ajuste marges automatiquement
+
 }

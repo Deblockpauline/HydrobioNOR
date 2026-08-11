@@ -83,5 +83,6 @@ fun_filtrer_repartition_taxon <- function(donnees,
         libelle_taxon %in% taxon_selectionne ) } }# Garde les taxons choisis
 
   if (nrow(df) == 0) { return(NULL) } # Si plus aucune ligne, arrete la fonction
-  sf::st_transform(df, 4326)  # Convertis pour leaflet
+  sf::st_as_sf(df, coords = c("coordonnee_x", "coordonnee_y"), crs = 2154, remove = FALSE) |>
+    sf::st_transform(4326)  # Convertis pour leaflet
 }

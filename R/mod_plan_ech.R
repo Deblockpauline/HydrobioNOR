@@ -314,8 +314,8 @@ mod_plan_echantillonnage_server <- function(id,
             "Recouvrement", # Colonne à mettre en forme
             valueColumns = "recouvrement_num", # Colonne utilisée pour la condition
             fontWeight = DT::styleInterval(
-              5, # Seuil de recouvrement
-              c("normal", "bold") ) ) # Normal si <= 5, gras si > 5
+              4, # Seuil de recouvrement
+              c("normal", "bold") ) ) # Normal si < 5, gras si => 5
 
       } else { # Si c'est les diat
         DT::datatable(
@@ -559,3 +559,9 @@ mod_plan_echantillonnage_server <- function(id,
             fileEncoding = "UTF-8") }
       ) } )
   } ) }
+
+## À appeler dans l'UI
+# mod_plan_echantillonnage_ui("plan_echantillonnage")
+
+## À appeler dans le server
+#  mod_plan_echantillonnage_server("plan_echantillonnage")

@@ -64,7 +64,6 @@ mod_station_carte_server <- function(id, # Recoit les données et les choix
           length(choix_eqb()) > 0 && # Au moins un choix
           !("Tous" %in% choix_eqb())) { # Pas tous
         stations_eqb <- df_taxon |>
-          sf::st_drop_geometry() |> # Supprime la géométrie
           dplyr::filter(eqb %in% choix_eqb()) |> # Garde EQB choisi
           dplyr::distinct(code_station) |> # Stations uniques
           dplyr::pull(code_station) # Codes stations
@@ -84,7 +83,6 @@ mod_station_carte_server <- function(id, # Recoit les données et les choix
           dplyr::distinct(code_station) |> # Stations uniques
           dplyr::pull(code_station) # Codes stations
         stations_qualification_taxon <- df_taxon |> # Table taxons
-          sf::st_drop_geometry() |> # Supprime géométrie
           dplyr::filter(
             libelle_qualification %in% choix_qualification()) |> # Qualification choisie
           dplyr::distinct(code_station) |> # Stations uniques
@@ -128,12 +126,22 @@ mod_station_carte_server <- function(id, # Recoit les données et les choix
 # Création de la carte
 
     # Couches préparées dans le script de préparation des données de référence
-    limites_region_carte <- shiny::reactive({ # Limite des régions
-      sf::st_transform(limites_region_l, 4326) } ) # Conversion WGS84
-    limites_cours_eau_carte <- shiny::reactive({ # Cours d'eau
-      sf::st_transform(limites_cours_eau, 4326) } )
-    limites_bv_carte <- shiny::reactive({ # Bassins versants
-      sf::st_transform(limites_bv_l, 4326) } )
+    # Création de la carte
+
+    limites_region_carte <- shiny::reactive({
+      shiny::req(donnees()$limites_region_l)
+      sf::st_transform(donnees()$limites_region_l, 4326)
+    })
+
+    limites_cours_eau_carte <- shiny::reactive({
+      shiny::req(donnees()$limites_cours_eau)
+      sf::st_transform(donnees()$limites_cours_eau, 4326)
+    })
+
+    limites_bv_carte <- shiny::reactive({
+      shiny::req(donnees()$limites_bv_l)
+      sf::st_transform(donnees()$limites_bv_l, 4326)
+    })
 
     # Création initiale de la carte
     output$carte_stations <- leaflet::renderLeaflet({ # Carte interactive

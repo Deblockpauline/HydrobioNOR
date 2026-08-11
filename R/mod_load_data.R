@@ -19,29 +19,22 @@ mod_load_data_ui <- function(id) {
 
 mod_load_data_server <- function(id) {
   shiny::moduleServer(id, function(input, output, session) {
-    donnees <- shiny::reactiveVal(NULL) # Stocke les données chargées
-    shiny::observeEvent(TRUE, { # Se lance une seule fois
-      fichier_temp <- tempfile(fileext = ".rda") # Fichier temporaire
-      url_data <- "https://raw.githubusercontent.com/Deblockpauline/HydrobioNOR/main/dev/data_hydrobioNOR.rda"
-      options(timeout = 300) # Temps max
-      utils::download.file(
-        url = url_data,
-        destfile = fichier_temp,
-        mode = "wb" )
-      env <- new.env() # Environnement temporaire
-      load(fichier_temp, envir = env) # Charge le .rda
-      unlink(fichier_temp) # Supprime le temporaire
-      donnees(as.list(env)) # Met les données dans reactiveVal
-    }, once = TRUE) # Evite le rechargement
+    donnees <- shiny::reactiveVal(NULL)
+    shiny::observeEvent(TRUE, {
+      donnees(get_data_hydrobioNOR())  # <- va chercher le cache, télécharge seulement si vide
+    }, once = TRUE)
 
-    output$date <- shiny::renderText({ # Affichage de la date de mise à jour des données
+    output$date <- shiny::renderText({
       shiny::req(donnees())
       if ("date_donnees" %in% names(donnees())) {
-        paste( "Date de mise à jour des données :",
-          as.character(donnees()$date_donnees))
-      } else { "Date non disponible"} } )
-    return(donnees) } )
+        paste("Date de mise à jour des données :",
+              as.character(donnees()$date_donnees))
+      } else { "Date non disponible" }
+    })
+    return(donnees)
+  })
 }
+
 
 ## À appeler dans l'UI
 # mod_load_data_ui("donnees")
