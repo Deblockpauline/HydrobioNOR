@@ -11,7 +11,31 @@ License: What license is it under?
 Imports: 
     config,
     golem,
-    shiny
+    shinycssloaders,
+    shiny,
+    ggalluvial,
+    scales,
+    leaflet,
+    plotly,
+    DT,
+    devtools,
+    vctrs,
+    sfsmisc,
+    ade4,
+    ranger,
+    mlr,
+    rlang,
+    hubeau,
+    readxl,
+    lubridate,
+    stringr,
+    tidyr,
+    dplyr,
+    sf,
+    vegan,
+    readr,
+    remotes,
+    rmapshaper
 Encoding: UTF-8
 LazyData: true
 RoxygenNote: 7.3.3
