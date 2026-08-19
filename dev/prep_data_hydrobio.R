@@ -1,4 +1,22 @@
 #### Packages ####
+install.packages("devtools")
+install.packages("vctrs")
+install.packages("sfsmisc")
+install.packages("ade4")
+install.packages("ranger")
+install.packages("mlr")
+install.packages("rlang")
+install.packages("hubeau")
+install.packages("readxl")
+install.packages("lubridate")
+install.packages("stringr")
+install.packages("tidyr")
+install.packages("sf")
+install.packages("readr")
+install.packages("remotes")
+install.packages("rmapshaper")
+install.packages("vegan")
+
 library(hubeau)# Package pour la recup des données
 library(shiny)
 library(readxl) # Pour ouvrir les excels contenant les données
@@ -8,6 +26,11 @@ library(lubridate) # Permet de filter les années par la suite
 library(stringr) # Travailler proprement avec les chaînes de caractères
 library(tidyr) # Pour la mise en forme des données
 library(sf) # Manipuler des données géographiques (cartes)
+library(readr)
+library(devtools)
+packageVersion("vctrs") # La bonne version est 0.7.3
+packageVersion("rlang") # Pareil la bonne version doit etre 1.3.0
+devtools::install_local("données/SEEEapi-master")
 library(SEEEapi) #Permet de calculer les indices et le diag
 devtools::load_all(".") # Charge les packages et fonctions locales
 # |> = prends ca et passe-le à la fonction
@@ -51,6 +74,9 @@ indices <- map_dfr(codes, function(cd) {
     mutate(code_station_hydrobio = cd,
            .error = FALSE)})
 # Meme fonctionnement que Taxon
+
+#### Pour se mettre dans le dossier des données####
+setwd("données")
 
 #### Table Stations avec toutes les info####
 dates_station <- bind_rows(
@@ -136,7 +162,7 @@ stations <- stations %>%
 # Pour les uh
 # Lecture du shapefile des UH
 uh <- sf::st_read(
-  "C:/Users/pauline.deblock/Documents/stage Pauline/R/hydrobioNOR/données/UH/UH_actives_simplifiees.shp",
+  "UH_actives_simplifiees.shp",
   quiet = TRUE)
 stations <- stations %>%
   sf::st_drop_geometry() %>%
@@ -167,6 +193,26 @@ table(is.na(stations$UH_calculee))
 stations %>%
   sf::st_drop_geometry() %>%
   dplyr::count(UH_calculee, sort = TRUE)
+
+# Mettre en forme indice
+indices <- indices %>%
+  dplyr::select(
+    code_station = code_station_hydrobio,
+    code_support,
+    libelle_support,
+    date_prelevement,
+    code_prelevement,
+    code_indice,
+    libelle_indice,
+    resultat_indice,
+    code_qualification,
+    libelle_qualification) %>%
+  dplyr::mutate(
+    date_prelevement = as.Date(date_prelevement),
+    annee = year(date_prelevement) ) %>%
+  dplyr::filter(code_indice %in% c(  # Filtrer les indices
+    "1022","5856","7613","5910","7036",
+    "2928","8058","8056","8057","8054","8050"))
 
 #On garde seulement les stations avec des indices
 stations <-stations %>%
@@ -217,26 +263,6 @@ taxons <- taxons %>%
 #Garder seulement ceux qui nous interresse
 taxons <- taxons %>%
   dplyr::filter(code_station %in% stations$code_station)
-
-#### Mettre en forme indice#####
-indices <- indices %>%
-  dplyr::select(
-    code_station = code_station_hydrobio,
-    code_support,
-    libelle_support,
-    date_prelevement,
-    code_prelevement,
-    code_indice,
-    libelle_indice,
-    resultat_indice,
-    code_qualification,
-    libelle_qualification) %>%
-  dplyr::mutate(
-    date_prelevement = as.Date(date_prelevement),
-    annee = year(date_prelevement) ) %>%
-  dplyr::filter(code_indice %in% c(  # Filtrer les indices
-    "1022","5856","7613","5910","7036",
-    "2928","8058","8056","8057","8054","8050"))
 
 # On a toutes les informations necessaires pour la suite , comme dans IDF on va creer notre jeu de données etat_bio contenant l'EQR calculé
 
@@ -760,7 +786,7 @@ lire_plans <- function(chemin_dossier, motif, eqb_nom) { # Argument dont elle a 
   } ) }
 
 # Chemin des dossiers
-dossier_plan <- "C:/Users/pauline.deblock/Documents/stage Pauline/R/hydrobioNOR/données/plan ech"
+dossier_plan <- "plan ech"
 
 #Creation des tables
 plan_diatomees <- lire_plans(
@@ -930,9 +956,9 @@ tc_diat <- readxl::read_excel("TCv1.3_DIAT.xlsx")
 taxons_diat <- taxons %>%
   filter(code_support == "10")  # Prendre que les DIA
 export_diat_a <- read_csv2( # Lecture des 2 fichiers exportés du Sandre
-  "C:/Users/pauline.deblock/Documents/stage Pauline/R/hydrobioNOR/données/extraction/export_1775210580.csv")
+  "export_1775210580.csv")
 export_diat_b <- read_csv2(
-  "C:/Users/pauline.deblock/Documents/stage Pauline/R/hydrobioNOR/données/extraction/export_diat1.csv")
+  "export_diat1.csv")
 export_diat <- bind_rows( # Filtrer chaque table sur CdThemeTaxon = 5 puis les fusionner
   export_diat_a %>% filter(as.character(CdThemeTaxon) == "5"),
   export_diat_b %>% filter(as.character(CdThemeTaxon) == "5")) %>%
@@ -1038,7 +1064,7 @@ diagnostic_diat <- fun_lancer_diagnostic_seee_local(
 #### Table valeur_seuil_taxon ####
 # Récupération de la liste des fichiers de paramètres des indices dans le dossier des algorithmes SEEE version 2018.
 fichiers_parametres <- list.files(
-  path = "algo_SEEE/EBio_CE_2018/1.0.1",
+  path = "algo_SEEE/EBio_CE_2018/1.0.2",
   pattern = "params",
   full.names = TRUE) # permet d'obtenir le chemin complet des fichiers
 
@@ -1048,8 +1074,9 @@ fichiers_parametres <- c( fichiers_parametres[!stringr::str_detect(fichiers_para
 
 # Noms d'indices à partir des noms de fichiers
 noms_indices_param <- fichiers_parametres |>
-  stringr::str_remove("algo_SEEE/EBio_CE_201\\d/1.0.1/EBio_CE_201\\d_params_") |>
-  stringr::str_remove("\\.csv")
+  basename() |>
+  stringr::str_remove("^EBio_CE_\\d+_params_") |>
+  stringr::str_remove("\\.csv$")
 
 # Import des seuils des différents indices
 # Decimal_mark = "," pour bien lire les valeurs numériques
@@ -1190,7 +1217,7 @@ limites_cours_eau <- sf::st_read(
 
 #### Bassins versants ####
 limites_bv <- sf::st_read(
-  "C:/Users/pauline.deblock/Documents/stage Pauline/R/hydrobioNOR/données/couche BV/BV_NOR.shp",
+  "BV_NOR.shp",
   quiet = TRUE) %>%
   sf::st_make_valid() %>%                # Sécurise les géométries si besoin
   sf::st_transform(crs = 4326) %>%       # Projection compatible leaflet
@@ -1261,5 +1288,3 @@ save( stations,
       limites_region_l,
       eee,
       file = "C:/Users/pauline.deblock/Documents/stage Pauline/R/hydrobioNOR/dev/data_hydrobioNOR.rda")
-
-
