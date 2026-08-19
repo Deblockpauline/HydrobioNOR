@@ -15,7 +15,7 @@ fun_date_seee <- function(x) { # Conversion de la date
 
 fun_lancer_diagnostic_seee_local <- function(df_entree, # Table d'entrée (peut etre entree_diat ou inv)
                                              type_diag, # Type de diagnostic (diat ou inv)
-                                             dossier_algo = "C:/Users/pauline.deblock/Documents/stage Pauline/R/hydrobioNOR/algo_SEEE") { # Dossier SEEE
+                                             dossier_algo = "algo_SEEE") { # Dossier SEEE
 
 # Cas invertébrés
   if (type_diag == "Macroinvertébrés") {
@@ -24,7 +24,7 @@ fun_lancer_diagnostic_seee_local <- function(df_entree, # Table d'entrée (peut 
       "ODInvertebres_v1.0.2_Documentation_scripts (1)") # Dossier script inv
     script_calc <- file.path(
       dossier_script,
-      "ODInvertebres_v1.0.2_calc_consult.R") # Script calcul inv
+      "ODInvertebres_v1.0.2_calc_consult.r") # Script calcul inv
     fichier_entree <- file.path(
       dossier_script,
       "ODInvertebres_entree_01.txt") # Fichier entrée inv, format necessaire fourni, ma table entree_inv va etre inscrite dedans
@@ -36,7 +36,7 @@ fun_lancer_diagnostic_seee_local <- function(df_entree, # Table d'entrée (peut 
       "ODDiatomees_v1.0.0_Documentation_scripts" ) # Dossier script diat
     script_calc <- file.path(
       dossier_script,
-      "ODDiatomees_v1.0.0_calc_consult.R" ) # Script calcul diat
+      "ODDiatomees_v1.0.0_calc_consult.r" ) # Script calcul diat
     fichier_entree <- file.path(
       dossier_script,
       "ODDiatomees_entree_01.txt") } # Fichier entrée diat
@@ -52,20 +52,22 @@ fun_lancer_diagnostic_seee_local <- function(df_entree, # Table d'entrée (peut 
     delim = "\t", # Séparateur tabulation
     na = "" ) # NA en vide
 
-# Differents dossier géré
-  ancien_dossier <- getwd() # Dossier R actuel sauvegardé, car on va changer apres
-  on.exit( # Sécurité
-    setwd(ancien_dossier), # Revient au dossier initial
-    add = TRUE) # Garde autres on.exit
-  setwd(dossier_script) # Se place dans dossier SEEE
-
-  env_seee <- new.env() # Environnement isolé
-
-# Lecture du script SEEE (pas éxécuté)
+  # Lecture du script SEEE avant de changer de dossier
   script_lignes <- readLines(
-    script_calc, # Script SEEE
-    encoding = "UTF-8", # Encodage
-    warn = FALSE ) # Pas d'avertissement
+    script_calc,
+    encoding = "UTF-8",
+    warn = FALSE)
+
+  # Différents dossiers gérés
+  ancien_dossier <- getwd()
+  on.exit(
+    setwd(ancien_dossier),
+    add = TRUE)
+
+  # Le script SEEE utilise des fichiers présents dans son propre dossier
+  setwd(dossier_script)
+
+  env_seee <- new.env()
 
 # Correction dans le script as.tbl car plus valable avec le nouveau package sous forme de dplyr:: ou juste as.
   script_lignes <- gsub(

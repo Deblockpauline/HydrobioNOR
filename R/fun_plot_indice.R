@@ -32,8 +32,8 @@ fun_plot_indices_station <- function(etat_bio, station_id) {
     "TRES_BON" = "#4575b4", # Très bon
     "BON" = "#91cf60", # Bon
     "MOYEN" = "#fee08b", # Moyen
-    "MAUVAIS" = "#fc8d59", # Mauvais
-    "MEDIOCRE" = "#d73027", # Médiocre
+    "MEDIOCRE" = "#fc8d59", # Médiocre
+    "MAUVAIS" =  "#d73027", # Mauvais
     "Non renseigné" = "grey90" ) # Sans classe
 
 # Fonction pour tracer un graph par indice qui sera ensuite injecter dans une boucle purr pour l'etendre a tout les indices de la station
